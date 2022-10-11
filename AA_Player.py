@@ -26,48 +26,82 @@ def conectarPartida():
     # ... autenticación en Engine
     return
 
-def enviarRegistry(datos):
+def insertRegistry(AA_Registry):
+
+    datos = {  "alias":     input('alias: '), 
+                "password": input('password: '),
+                "nivel":    '1',
+                "ef":       '0',
+                "ec":       '0'
+            }
+    
     datos = json.dumps(datos)
     
     try:
-        sock = socket.socket()
+        conn = socket.socket()
     except socket.error as err:
         print('Socket error because of %s' %(err))
 
-    port = 1500
-    address = socket.gethostname()
-
     try:
-        sock.connect((address, port))
-        sock.send(datos.encode())
+        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+
+        # send action to server
+        conn.send('insert'.encode())
+        msg = conn.recv(1024).decode()
+        print(msg)
+
+        conn.send(datos.encode())
+        msg = conn.recv(1024).decode()
+        print(msg)
+
     except socket.gaierror:
-
         print('There an error resolving the host')
-
         sys.exit() 
                 
-    sock.close()
+    conn.close()
 
-def editarPerfil():
-    # editar perfil de usuario existente
-    return
+def updateRegistry(AA_Registry):
 
-def crearPerfil():
+    data = { "alias": input('old alias: '),
+                "password": input('old password: ')
+    }
 
-    alias = input('alias: ')
-    password = input('password: ')
-    nivel = input('nivel: ')
-    ef = input('ef: ')
-    ec = input('ec: ')
+    oldData = json.dumps(data)
 
-    datos = {  "alias":alias, 
-                "password":password,
-                "nivel": nivel,
-                "ef":ef,
-                "ec":ec
-            }
+    data = { "alias": input('new alias: '),
+                "password": input('new password: ')
+    }
 
-    return datos
+    newData = json.dumps(data)
+
+
+
+    try:
+        conn = socket.socket()
+    except socket.error as err:
+        print('Socket error because of %s' %(err))
+
+    try:
+        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+
+        # send action to server
+        conn.send('update'.encode())
+        msg = conn.recv(1024).decode()
+        print(msg)
+
+        conn.send(oldData.encode())
+        msg = conn.recv(1024).decode()
+
+        conn.send(newData.encode())
+        msg = conn.recv(1024).decode()
+        print(msg)
+       
+    except socket.gaierror:
+        print('There an error resolving the host')
+        sys.exit() 
+                
+    conn.close()
+    
 
 def menu():
 
@@ -90,24 +124,25 @@ def main():
     for addr in data['direcciones']:
         if addr['Id'] == 'AA_Engine':
             AA_Engine.setIp(addr['IP'])
-            AA_Engine.setPort(addr['port'])
+            AA_Engine.setPort(int(addr['port']))
 
         elif addr['Id'] == 'AA_Registry':
+            print(f'Registering in {addr} ')
             AA_Registry.setIp(addr['IP'])
-            AA_Registry.setPort(addr['port'])
+            AA_Registry.setPort(int(addr['port']))
 
         elif addr['Id'] == 'Manager':
             Manager.setIp(addr['IP'])
-            Manager.setPort(addr['port'])
+            Manager.setPort(int(addr['port']))
 
     args.close()
 
     opcion = menu()
 
     if opcion == '1':
-        enviarRegistry(crearPerfil())
+        insertRegistry(AA_Registry)
     elif opcion == '2':
-        editarPerfil()
+        updateRegistry(AA_Registry)
         return
     elif opcion == '3':
         conectarPartida()
