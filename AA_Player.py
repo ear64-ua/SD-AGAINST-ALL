@@ -19,14 +19,12 @@ class Modulo:
     def getPort(self):
         return self.port
 
-
-
 def conectarPartida():
 
     alias = input('Alias: ')
     password = input('Password: ')
-
     # ... autenticación en Engine
+    return
 
 def enviarRegistry(datos):
     datos = json.dumps(datos)
@@ -81,11 +79,6 @@ def menu():
     return input('Tu opción: ')
 
 def main():
-
-    # argumentos:
-    #   IP y puerto del AA_Engine
-    #   IP y puerto del Broker/Bootstrap-server del gestor de colas
-    #   IP y puerto del AA_Registry  
     
     args = open('player_args.json')
     data = json.load(args)
