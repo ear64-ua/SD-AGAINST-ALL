@@ -1,0 +1,21 @@
+{
+    "ciudades": [
+        {
+            "nombre": "Londres",
+            "temperatura": "5"
+        },
+        {
+            "nombre": "Alicante",
+            "temperatura": "26"
+        },
+        {
+            "nombre": "Sidney",
+            "temperatura": "32"
+        },
+        {
+            "nombre": "Wisconsin",
+            "temperatura": "-15"
+        }
+    ]
+
+}

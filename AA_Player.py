@@ -2,6 +2,25 @@ import socket
 import sys
 import json
 
+class Modulo:
+    def __init__(self):
+        self.port = 0
+        self.ip = 0
+    
+    def setIp(self,ip):
+        self.ip = ip
+    
+    def setPort(self,port):
+        self.port = port
+    
+    def getIp(self):
+        return self.ip
+    
+    def getPort(self):
+        return self.port
+
+
+
 def conectarPartida():
 
     alias = input('Alias: ')
@@ -30,6 +49,10 @@ def enviarRegistry(datos):
         sys.exit() 
                 
     sock.close()
+
+def editarPerfil():
+    # editar perfil de usuario existente
+    return
 
 def crearPerfil():
 
@@ -63,15 +86,35 @@ def main():
     #   IP y puerto del AA_Engine
     #   IP y puerto del Broker/Bootstrap-server del gestor de colas
     #   IP y puerto del AA_Registry  
-    if len(sys.argv) != 3:
-        print('ERROR en argumentos. Uso: IP puerto')
-        return
+    
+    args = open('player_args.json')
+    data = json.load(args)
+
+    AA_Engine = Modulo()
+    AA_Registry = Modulo()
+    Manager = Modulo() 
+
+    for addr in data['direcciones']:
+        if addr['Id'] == 'AA_Engine':
+            AA_Engine.setIp(addr['IP'])
+            AA_Engine.setPort(addr['port'])
+
+        elif addr['Id'] == 'AA_Registry':
+            AA_Registry.setIp(addr['IP'])
+            AA_Registry.setPort(addr['port'])
+
+        elif addr['Id'] == 'Manager':
+            Manager.setIp(addr['IP'])
+            Manager.setPort(addr['port'])
+
+    args.close()
 
     opcion = menu()
 
     if opcion == '1':
         enviarRegistry(crearPerfil())
     elif opcion == '2':
+        editarPerfil()
         return
     elif opcion == '3':
         conectarPartida()

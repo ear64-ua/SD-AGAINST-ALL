@@ -1,5 +1,4 @@
 import json
-import socket
 
 def main():
     file = open('data.json')
@@ -10,7 +9,6 @@ def main():
         print(i['nombre'])
 
     file.close()
-
 
 if __name__ == "__main__":
     main()
