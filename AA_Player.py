@@ -102,6 +102,21 @@ def updateRegistry(AA_Registry):
                 
     conn.close()
     
+def readDirections(data, AA_Engine, AA_Registry, Broker):
+
+    for addr in data['direcciones']:
+        if addr['Id'] == 'AA_Engine':
+            AA_Engine.setIp(addr['IP'])
+            AA_Engine.setPort(int(addr['port']))
+
+        elif addr['Id'] == 'AA_Registry':
+            print(f'Registering in {addr} ')
+            AA_Registry.setIp(addr['IP'])
+            AA_Registry.setPort(int(addr['port']))
+
+        elif addr['Id'] == 'Broker':
+            Broker.setIp(addr['IP'])
+            Broker.setPort(int(addr['port']))
 
 def menu():
 
@@ -119,21 +134,9 @@ def main():
 
     AA_Engine = Modulo()
     AA_Registry = Modulo()
-    Manager = Modulo() 
+    Broker = Modulo() 
 
-    for addr in data['direcciones']:
-        if addr['Id'] == 'AA_Engine':
-            AA_Engine.setIp(addr['IP'])
-            AA_Engine.setPort(int(addr['port']))
-
-        elif addr['Id'] == 'AA_Registry':
-            print(f'Registering in {addr} ')
-            AA_Registry.setIp(addr['IP'])
-            AA_Registry.setPort(int(addr['port']))
-
-        elif addr['Id'] == 'Manager':
-            Manager.setIp(addr['IP'])
-            Manager.setPort(int(addr['port']))
+    readDirections(data,AA_Engine,AA_Registry,Broker)
 
     args.close()
 
