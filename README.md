@@ -19,6 +19,6 @@
 
 ## Test AA_Registry-AA_Player
 
-1. Open MongoDB Compass
+1. Open MongoDB Compass and set up server
 2. Run AA_Registry.py
 3. Run AA_Player.py
