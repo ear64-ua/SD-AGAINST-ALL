@@ -10,5 +10,15 @@
     
 4.  Run docker-compose up -d
 
-5.  Test....
+5.  Test
+
+
+## Test Kafka
+
+1.  Run docker-compose up -d
+
+2.  Run kafka_producer.py
+
+3.  Run kafka_consumer.py
+
 
