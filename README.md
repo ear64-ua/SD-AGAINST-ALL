@@ -20,7 +20,7 @@
 ## Test AA_Registry-AA_Player
 
 1. Open MongoDB Compass 
-2. Start mongodb service:
+2. Start mongodb service (if neccesary):
     - MACOS: brew services start mongodb-community
     - Linux: sudo service mongodb start
 4. Run AA_Registry.py
