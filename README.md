@@ -22,6 +22,6 @@
 1. Open MongoDB Compass 
 2. Start mongodb service:
     - MACOS: brew services start mongodb-community
-    - Linux: sudo service mongod start
+    - Linux: sudo service mongodb start
 4. Run AA_Registry.py
 5. Run AA_Player.py
