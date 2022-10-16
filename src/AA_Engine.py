@@ -57,6 +57,7 @@ class Mapa:
         columna = 0
         indx = 0
 
+        # recorremos por cada fila, dos ciudades e imprimimos sus valores
         for bloque in range(2):
 
             for fila in range(10):
@@ -65,6 +66,7 @@ class Mapa:
                     c +=' '
                 c += '  #  '
 
+                # agarramos las dos ciudades
                 for ciudad in  self.ciudades[indx:indx+2]:
                     for i in range(10):
                         c += VACIO
@@ -75,6 +77,7 @@ class Mapa:
                 
                 c += '\n'
 
+            # pasamos a las siguientes ciudades
             indx += 2
                  
         c += '       '
@@ -94,6 +97,7 @@ def main():
 
     data = json.load(file)
 
+    # lee las ciudades almacenadas en el fichero y las añade al mapa
     for ciudad in data['ciudades']:
         nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
         mapa.addCiudad(nueva_ciudad)
