@@ -5,6 +5,21 @@ import json
 from pymongo import MongoClient   
 import pymongo
 
+# Busca si el alias de un jugador existe en la base de datos
+def findPlayer(collection,data):
+
+    try:
+        result = collection.find_one(data)
+        # Si no encuentra ninguno devuelve None
+        if result == None:
+            return False
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    return True
+
 # Inserta los datos del jugador en la base de datos
 def mongoInsert(data):
 
@@ -18,8 +33,12 @@ def mongoInsert(data):
     db = conn.gameDB
     collection = db.players
 
+    # Si no ha encontrado a nadie con el mismo alias, inserta
+    if findPlayer(collection,{'alias' : data['alias']}):
+        return False
+
     try:
-        result = collection.insert_one(data)
+        collection.insert_one(data)
 
     except pymongo.errors.PyMongoError as e:
         print(e)
@@ -42,19 +61,19 @@ def mongoUpdate(oldData, newData):
     collection = db.players
 
     try:
-        result = collection.update_one(
+        # buscamos al jugador con el mismo alias y password, y actualizamos el password
+        result = collection.find_one_and_update(
             {
                 'alias': oldData['alias'],
                 'password': oldData['password']
             },
-            {'$set': {
-                'alias':newData['alias'],
+            {'$set': { 
                 'password':newData['password']
                 }
             }
         ) 
         # si no se ha actualizado ningún registro, devuelve error
-        if not result.matched_count > 0:
+        if result == None or not result.matched_count > 0:
             return False
 
     except pymongo.errors.PyMongoError as e:
@@ -64,6 +83,34 @@ def mongoUpdate(oldData, newData):
     print('Updated!')
     return True
 
+# Opción de insertar en la base de datos
+def inserting(c):
+    c.send('Inserting...'.encode())
+    dataReceived = c.recv(1024).decode()
+    # recoge los datos del usuario y los convierte a json
+    dataJson = json.loads(dataReceived)
+    
+    if mongoInsert(dataJson):
+        c.send('Inserted succesfully !'.encode())
+    else:
+        c.send('Error while inserting !'.encode())
+
+# Opción de actualizar en la base de datos
+def updating(c):
+    c.send('Updating...'.encode())
+
+    dataReceived = c.recv(1024).decode()
+    oldData = json.loads(dataReceived)
+    c.send('Old data received !'.encode())
+
+    dataReceived = c.recv(1024).decode()
+    newData = json.loads(dataReceived)
+    #c.send('New data received !'.encode())
+            
+    if mongoUpdate(oldData, newData):
+        c.send('Updated succesfully !'.encode())
+    else:
+        c.send('Error while updating !'.encode())
 
 def main():
 
@@ -92,31 +139,10 @@ def main():
         # decodifica los datos enviados para que se puedan leer y procesar
         option = c.recv(1024).decode()
         if option == 'insert':
-            c.send('Inserting...'.encode())
-            dataReceived = c.recv(1024).decode()
-            # recoge los datos del usuario y los convierte a json
-            dataJson = json.loads(dataReceived)
-            if mongoInsert(dataJson):
-                c.send('Inserted succesfully !'.encode())
-            else:
-                c.send('Error while inserting !'.encode())
-
+            inserting(c)
 
         elif option == 'update':
-            c.send('Updating...'.encode())
-
-            dataReceived = c.recv(1024).decode()
-            oldData = json.loads(dataReceived)
-            c.send('Old data received !'.encode())
-
-            dataReceived = c.recv(1024).decode()
-            newData = json.loads(dataReceived)
-            #c.send('New data received !'.encode())
-            
-            if mongoUpdate(oldData, newData):
-                c.send('Updated succesfully !'.encode())
-            else:
-                c.send('Error while updating !'.encode())
+            updating(c)
 
         c.close()
 

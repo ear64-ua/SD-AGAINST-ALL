@@ -28,7 +28,7 @@ def conectarPartida():
 
 def insertRegistry(AA_Registry):
 
-    datos = {  "alias":     input('alias: '), 
+    datos = {   "alias":     input('alias: '), 
                 "password": input('password: '),
                 "nivel":    '1',
                 "ef":       '0',
@@ -60,21 +60,19 @@ def insertRegistry(AA_Registry):
                 
     conn.close()
 
+# Conecta con la base de datos y devuelve si se ha insertado o no
 def updateRegistry(AA_Registry):
 
-    data = { "alias": input('old alias: '),
-                "password": input('old password: ')
-    }
-
+    # contraseña antigua
+    data = {    "alias": input('old alias: '),
+                "password": input('password: ')
+            }
+    # convertimos los datos a json para poder enviarlos al servidor
     oldData = json.dumps(data)
 
-    data = { "alias": input('new alias: '),
-                "password": input('new password: ')
-    }
-
+    # nueva contraseña
+    data = {    "password": input('new password: ') }
     newData = json.dumps(data)
-
-
 
     try:
         conn = socket.socket()
@@ -90,10 +88,10 @@ def updateRegistry(AA_Registry):
         print(msg)
 
         conn.send(oldData.encode())
-        msg = conn.recv(1024).decode()
+        msg = conn.recv(1024).decode() # confirmación de datos antiguos
 
         conn.send(newData.encode())
-        msg = conn.recv(1024).decode()
+        msg = conn.recv(1024).decode() # confirmación de insert
         print(msg)
        
     except socket.gaierror:
@@ -101,7 +99,8 @@ def updateRegistry(AA_Registry):
         sys.exit() 
                 
     conn.close()
-    
+
+# Lee las direcciones y puertos de los datos pasados del fichero json
 def readDirections(data, AA_Engine, AA_Registry, Broker):
 
     for addr in data['direcciones']:
@@ -118,12 +117,14 @@ def readDirections(data, AA_Engine, AA_Registry, Broker):
             Broker.setIp(addr['IP'])
             Broker.setPort(int(addr['port']))
 
+# Muestra el menú de opciones que tiene el jugador
 def menu():
 
     print('Elige una opción:')
     print('1. Crear perfil')
     print('2. Editar perfil')
     print('3. Unirse a partida')
+    print('4 Salir')
 
     return input('Tu opción: ')
 
@@ -140,15 +141,18 @@ def main():
 
     args.close()
 
-    opcion = menu()
+    while True:
+        opcion = menu()
 
-    if opcion == '1':
-        insertRegistry(AA_Registry)
-    elif opcion == '2':
-        updateRegistry(AA_Registry)
-        return
-    elif opcion == '3':
-        conectarPartida()
+        if opcion == '1':
+            insertRegistry(AA_Registry)
+        elif opcion == '2':
+            updateRegistry(AA_Registry)
+            return
+        elif opcion == '3':
+            conectarPartida()
+        else:
+            break
 
 
     
