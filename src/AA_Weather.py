@@ -1,5 +1,8 @@
 import json
 import random
+import socket
+
+from AA_Player import Modulo
 
 MAX_CITIES = 10
 
@@ -14,17 +17,33 @@ def chooseCities(data):
             cities.append(data['ciudades'][indx])
             i += 1            
 
+    print(cities)
     return cities
 
 
 def main():
 
-    file = open('data.json')
+    file = open('player_args.json')
 
     data = json.load(file)
 
-    print(chooseCities(data))
+    # guardar el puerto e IP de weather
+    AA_Weather = Modulo()
+    for dir in data['direcciones']:
+        if data['Id'] == 'AA_Weather':
+            AA_Weather.setIp(dir['IP'])
+            AA_Weather.setPort(dir['port'])
 
+    # inicializamos el socket
+    conn = socket.socket() 
+    conn.bind((AA_Weather.getIp(), AA_Weather.getPort())) 
+
+    peticion = conn.recv(1024).decode()
+    conn.send(str(chooseCities(data)).encode())
+
+    file = open('data.json')
+
+    data = json.load(file)
 
     file.close()
 

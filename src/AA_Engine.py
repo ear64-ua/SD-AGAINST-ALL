@@ -1,5 +1,8 @@
 import json
 import random
+import socket
+import sys
+from AA_Player import Modulo
 
 VACIO = '*'
 TAM_CIUDAD = 10
@@ -92,19 +95,52 @@ class Mapa:
 def main():
 
     mapa = Mapa(TAM_TABLERO)
-
-    file = open('src/data.json')
+    cities = ''
+    file = open('player_args.json')
 
     data = json.load(file)
 
+    # guardar el puerto e IP de weather
+    AA_Weather = Modulo()
+    for dir in data['direcciones']:
+        if data['Id'] == 'AA_Weather':
+            AA_Weather.setIp(dir['IP'])
+            AA_Weather.setPort(dir['port'])
+
+    try:
+        conn = socket.socket()
+    except socket.error as err:
+        print('Socket error because of %s' %(err))
+
+    try:
+        conn.connect((AA_Weather.getIp(), AA_Weather.getPort()))
+
+        # enviar peticion
+        conn.send('send cities'.encode())
+
+        # espera de ciudades
+        cities = conn.recv(1024).decode()
+        print(cities)
+       
+    except socket.gaierror:
+        print('There an error resolving the host')
+        sys.exit() 
+                
+    conn.close()
+
+
     # lee las ciudades almacenadas en el fichero y las añade al mapa
-    for ciudad in data['ciudades']:
+    for ciudad in cities:
         nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
         mapa.addCiudad(nueva_ciudad)
 
+    print(mapa)
+
     file.close()
 
-    print(mapa)
+
+
+
 
 
 if __name__ == "__main__":
