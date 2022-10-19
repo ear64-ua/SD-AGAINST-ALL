@@ -20,6 +20,72 @@ Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 
 <img src=documentacion/ciudades.jpg width=500px height=500px>
 
+
+# Registro
+
+El registro (*AA_Registry.py*) se encarga de almacenar los datos de un jugador.
+
+La base de datos usada es MongoDB, nombrada gameBD, conectandose de la siguiente manera a la BD:
+````python
+try:
+    conn = MongoClient()
+    print("Connected to MongoDB successfully!!!")
+except:  
+    print("Could not connect to MongoDB")
+    return False
+
+db = conn.gameDB
+collection = db.players
+````
+
+Las opciones que tendrá el jugador serán:
+- Insertar/Registrar usuario. Siempre que **no exista** un usuario con el **mismo nombre**, se podrá registrar un jugador.
+    ````python
+    # Si no ha encontrado a nadie con el mismo alias, inserta
+    if findPlayer(collection,{'alias' : data['alias']}):
+       return False
+
+    try:
+       collection.insert_one(data)
+    
+    except pymongo.errors.PyMongoError as e:
+       print(e)
+       return False
+    
+    print('Inserted!')
+    return True
+    ````
+- Actualizar. Se podrá actualizar un usuario **si y sólo si existe** en la base de datos
+    ````python
+    try:
+        # buscamos al jugador con el mismo alias y password, y actualizamos el password
+        result = collection.find_one_and_update(
+            {
+                'alias': oldData['alias'],
+                'password': oldData['password']
+            },
+            {'$set': { 
+                'password':newData['password']
+                }
+            }
+        ) 
+        # si no se ha actualizado ningún registro, devuelve error
+        if result == None or not result.matched_count > 0:
+            return False
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    print('Updated!')
+    return True
+    ````
+
+Estará indefinidamente escuchando conexiones entrantes del módulo *AA_Player*
+
+
+
+
 # Steps:
 
 1.  Install [docker](https://www.docker.com/products/docker-desktop/)
