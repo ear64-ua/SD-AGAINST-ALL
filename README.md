@@ -25,6 +25,46 @@ Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 
 El registro (*AA_Registry.py*) se encarga de almacenar los datos de un jugador.
 
+Estará indefinidamente escuchando conexiones entrantes del módulo *AA_Player* y dependiendo de la petición recibida, procederá realizar una acción u otra
+````python
+while(True):
+
+    # conectamos con el cliente
+    c, address = register_socket.accept()  
+    print("Connection from: " + str(address))
+
+    # decodifica los datos enviados para que se puedan leer y procesar
+    option = c.recv(1024).decode()
+    if option == 'insert':
+        inserting(c)
+    
+    elif option == 'update':
+        updating(c)
+
+    c.close()
+````
+Las opciones que tenrá un juagador serán de insertar un registro en la base de datos o actualizarlo. Los datos recibidos serán del tipo string, que convertiremos al formato **JSON**. Se enviará un mensaje acerca del estado final de la consulta:
+
+````python
+    dataReceived = c.recv(1024).decode()
+    
+    dataJson = json.loads(dataReceived)
+````
+
+````python
+    if mongoInsert(dataJson):
+        c.send('Inserted succesfully !'.encode())
+    else:
+        c.send('Error while inserting !'.encode())
+````
+
+````python
+    if mongoUpdate(dataJson):
+        c.send('Updated succesfully !'.encode())
+    else:
+        c.send('Error while inserting !'.encode())
+````
+
 La base de datos usada es MongoDB, nombrada gameBD, conectandose de la siguiente manera a la BD:
 ````python
 try:
@@ -38,7 +78,6 @@ db = conn.gameDB
 collection = db.players
 ````
 
-Las opciones que tendrá el jugador serán:
 - Insertar/Registrar usuario. Siempre que **no exista** un usuario con el **mismo nombre**, se podrá registrar un jugador.
     ````python
     # Si no ha encontrado a nadie con el mismo alias, inserta
@@ -81,7 +120,6 @@ Las opciones que tendrá el jugador serán:
     return True
     ````
 
-Estará indefinidamente escuchando conexiones entrantes del módulo *AA_Player*
 
 
 
