@@ -96,7 +96,7 @@ def main():
 
     mapa = Mapa(TAM_TABLERO)
     cities = ''
-    file = open('player_args.json')
+    file = open('src/json_files/addresses.json')
 
     data = json.load(file)
 

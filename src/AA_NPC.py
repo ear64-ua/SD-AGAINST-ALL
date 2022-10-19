@@ -15,7 +15,7 @@ def readDirections(data, Broker):
 
 def main():
     
-    args = open('player_args.json')
+    args = open('src/json_files/addresses.json')
     data = json.load(args)
 
     Broker = Modulo() 

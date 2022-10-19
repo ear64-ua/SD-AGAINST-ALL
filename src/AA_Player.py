@@ -7,6 +7,17 @@ class Modulo:
         self.port = 0
         self.ip = 0
     
+    def __init__(self,id):
+
+        file = open('src/json_files/addresses.json')
+        data = json.load(file)
+        file.close()
+
+        for dir in data['direcciones']:
+            if dir['Id'] == id:
+                self.ip = dir['IP']
+                self.port = int(dir['port'])
+
     def setIp(self,ip):
         self.ip = ip
     
@@ -130,7 +141,7 @@ def menu():
 
 def main():
     
-    args = open('player_args.json')
+    args = open('src/json_files/addresses.json')
     data = json.load(args)
 
     AA_Engine = Modulo()
