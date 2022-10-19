@@ -1,7 +1,7 @@
 
 # Mapa
 
-!(mapa)[documentacion/mapa.jpg]
+![mapa](documentacion/mapa.jpg)
 
 # Steps:
 
