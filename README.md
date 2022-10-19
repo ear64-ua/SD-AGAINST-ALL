@@ -65,7 +65,7 @@ Las opciones que tenrá un juagador serán de insertar un registro en la base de
         c.send('Error while inserting !'.encode())
 ````
 
-La base de datos usada es MongoDB, nombrada gameBD, conectandose de la siguiente manera a la BD:
+La base de datos usada es MongoDB (nombrada gameBD) conectándose de la siguiente manera a la BD:
 ````python
 try:
     conn = MongoClient()
