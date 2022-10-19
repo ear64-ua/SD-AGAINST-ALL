@@ -1,7 +1,20 @@
 
 # Mapa
 
+El mapa consiste en un tablero de 20x20 que va a estar fornada por cuatro cuadrantes en las que cada una de ellas estará representando una ciudad
 ![mapa](documentacion/mapa.jpg)
+
+# Ciudad
+
+Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
+- Nombre
+- Temperatura
+- Posiciones Minas
+- Posiciones Alimentos
+- Posiciones Jugadores
+- Posiciones NPC's
+
+![ciudad](documentacion/ciudades.jpg)
 
 # Steps:
 
