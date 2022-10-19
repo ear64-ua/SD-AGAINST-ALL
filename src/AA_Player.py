@@ -3,9 +3,6 @@ import sys
 import json
 
 class Modulo:
-    def __init__(self):
-        self.port = 0
-        self.ip = 0
     
     def __init__(self,id):
 
@@ -111,23 +108,6 @@ def updateRegistry(AA_Registry):
                 
     conn.close()
 
-# Lee las direcciones y puertos de los datos pasados del fichero json
-def readDirections(data, AA_Engine, AA_Registry, Broker):
-
-    for addr in data['direcciones']:
-        if addr['Id'] == 'AA_Engine':
-            AA_Engine.setIp(addr['IP'])
-            AA_Engine.setPort(int(addr['port']))
-
-        elif addr['Id'] == 'AA_Registry':
-            print(f'Registering in {addr} ')
-            AA_Registry.setIp(addr['IP'])
-            AA_Registry.setPort(int(addr['port']))
-
-        elif addr['Id'] == 'Broker':
-            Broker.setIp(addr['IP'])
-            Broker.setPort(int(addr['port']))
-
 # Muestra el menú de opciones que tiene el jugador
 def menu():
 
@@ -144,11 +124,9 @@ def main():
     args = open('src/json_files/addresses.json')
     data = json.load(args)
 
-    AA_Engine = Modulo()
-    AA_Registry = Modulo()
-    Broker = Modulo() 
-
-    readDirections(data,AA_Engine,AA_Registry,Broker)
+    AA_Engine = Modulo('AA_Engine')
+    AA_Registry = Modulo('AA_Registry')
+    Broker = Modulo('Broker') 
 
     args.close()
 
