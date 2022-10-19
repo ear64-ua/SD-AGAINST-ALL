@@ -20,8 +20,8 @@ Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 
 <img src=documentacion/ciudades.jpg width=500px height=500px>
 
-
-# Registro
+# Módulos
+## Registro
 
 El registro (*AA_Registry.py*) se encarga de almacenar los datos de un jugador.
 
@@ -121,7 +121,69 @@ collection = db.players
     ````
 
 
+## Clima
 
+El clima (*AA_Weather.py*) se encarga de estar a la espera de peticiones del engine (*AA_Engine.py*) para enviar una ciudad aleatoria de su base de datos.
+
+Para la base de datos, se ha usado esta vez un archivo de JSON:
+````
+{
+    "ciudades": [
+        {
+            "nombre": "Londres",
+            "temperatura": "5"
+        },
+        {
+            "nombre": "Alicante",
+            "temperatura": "26"
+        },
+        
+        .
+        .
+        .
+        
+    ]
+}
+````
+ 
+Se va a realizar una conexión por medio de sockets al engine (*AA_Engine.py*):
+````python
+import socket
+
+AA_Engine =  Modulo('AA_Engine')
+
+conn = socket.socket() 
+conn.bind((AA_Engine.getIp(), AA_Engine.getPort())) 
+
+conn.listen(2)
+````
+
+Aceptará conexiones indefinidamente y cada vez que se conecte, se realizará el envío y recibos de mensajes. En caso de que el mensaje sea *ok*, se dejarán de enviar las peticiones de ciudades. Las ciudades se enviarán en formato string, convertido por ``json.dumps()``, para facilitar la recepción de mensajes.
+````python
+import json
+
+while True:
+    engine, address = conn.accept()  
+    while peticion != 'ok':
+        peticion = engine.recv(1024).decode()
+        city = json.dumps(chooseCity())
+        engine.send(city.encode())
+````
+
+El mecanismo para elegir las ciudades aleatoriamente, será con el uso del módulo de python **random**
+
+````python
+import random
+
+def chooseCity():
+    file = open('src/json_files/data.json')
+    data = json.load(file)
+    file.close()
+
+    indx = random.randrange(0,MAX_CITIES) 
+
+    return data['ciudades'][indx]
+````
 
 
 # Steps:
