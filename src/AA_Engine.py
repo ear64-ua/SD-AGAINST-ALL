@@ -101,11 +101,7 @@ def main():
     data = json.load(file)
 
     # guardar el puerto e IP de weather
-    AA_Weather = Modulo()
-    for dir in data['direcciones']:
-        if data['Id'] == 'AA_Weather':
-            AA_Weather.setIp(dir['IP'])
-            AA_Weather.setPort(dir['port'])
+    AA_Weather = Modulo('AA_Weather')
 
     try:
         conn = socket.socket()
@@ -120,6 +116,7 @@ def main():
 
         # espera de ciudades
         cities = conn.recv(1024).decode()
+        cities = json.loads(cities)
         print(cities)
        
     except socket.gaierror:
@@ -130,7 +127,7 @@ def main():
 
 
     # lee las ciudades almacenadas en el fichero y las añade al mapa
-    for ciudad in cities:
+    for ciudad in cities['ciudades']:
         nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
         mapa.addCiudad(nueva_ciudad)
 

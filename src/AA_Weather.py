@@ -18,7 +18,7 @@ def chooseCities():
     i = 0
     while i < NUM_CITIES:
 
-        indx = random.randint(0,MAX_CITIES-1)
+        indx = random.randrange(0,MAX_CITIES)
         if data['ciudades'][indx] not in cities:
             cities.append(data['ciudades'][indx])
             i += 1            
@@ -58,22 +58,23 @@ def main():
 
     AA_Engine =  Modulo('AA_Engine')
 
-    chosenCities = chooseCities()
+    
 
     # inicializamos el socket
     conn = socket.socket() 
     conn.bind((AA_Engine.getIp(), AA_Engine.getPort())) 
 
-    conn.listen(1)
+    conn.listen(2)
 
     print(f' AA_Weather listening for AA_Engine petition...{[AA_Engine.getIp(),AA_Engine.getPort()]} ')
 
-    engine, address = conn.accept()  
-    print("Petition received from: " + str(address))
+    while True:
+        engine, address = conn.accept()  
+        print("Petition received from: " + str(address))
 
-    #while True:
-    #    peticion = conn.recv(1024).decode()
-    #    conn.send(str(chooseCities(chosenCities)).encode())
+        peticion = engine.recv(1024).decode()
+        print(peticion)
+        engine.send(str(chooseCities()).encode())
 
 
 
