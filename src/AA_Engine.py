@@ -11,6 +11,8 @@ MIN_ALIMENTOS = 15
 MAX_ALIMENTOS = 25
 MAX_MINAS = 25
 MIN_MINAS = 15
+NUM_CITIES = 4
+
 
 class Ciudad:
     def __init__(self,nombre,temperatura,tam):
@@ -90,18 +92,9 @@ class Mapa:
 
         return c
 
+def sendWeather(AA_Weather):
 
-
-def main():
-
-    mapa = Mapa(TAM_TABLERO)
-    cities = ''
-    file = open('src/json_files/addresses.json')
-
-    data = json.load(file)
-
-    # guardar el puerto e IP de weather
-    AA_Weather = Modulo('AA_Weather')
+    cities = []
 
     try:
         conn = socket.socket()
@@ -111,13 +104,20 @@ def main():
     try:
         conn.connect((AA_Weather.getIp(), AA_Weather.getPort()))
 
-        # enviar peticion
-        conn.send('send cities'.encode())
+        i = 0
 
-        # espera de ciudades
-        cities = conn.recv(1024).decode()
-        cities = json.loads(cities)
-        print(cities)
+        # enviar peticiones hasta que tengamos NUM_CITIES distintas recibidas de AA_Weather
+        while i < NUM_CITIES:
+            conn.send('send city'.encode())
+            city = conn.recv(1024).decode()
+            print(f'City received -> {city}')
+
+            if json.loads(city) not in cities:
+                cities.append(json.loads(city))
+                i += 1
+        
+        conn.send('ok'.encode())
+       
        
     except socket.gaierror:
         print('There an error resolving the host')
@@ -125,15 +125,56 @@ def main():
                 
     conn.close()
 
+    #return cities
+    return array2json(cities)
+
+# Construye una lista de keys:value a una lista json
+def array2json(array):
+
+    c = { 'ciudades': 
+            [
+                {
+                    'nombre' : array[0]['nombre'],
+                    'temperatura' : array[0]['temperatura']
+                },
+                {
+                    'nombre' : array[1]['nombre'],
+                    'temperatura' : array[1]['temperatura']
+                },
+                {
+                    'nombre' : array[2]['nombre'],
+                    'temperatura' : array[2]['temperatura']
+                },
+                {
+                    'nombre' : array[3]['nombre'],
+                    'temperatura' : array[3]['temperatura']
+                }
+            ]
+        }
+
+    return c
+        
+
+def main():
+
+    mapa = Mapa(TAM_TABLERO)
+    cities = ''
+
+    # guardar el puerto e IP de weather
+    AA_Weather = Modulo('AA_Weather')
+
+    cities = sendWeather(AA_Weather)
+
 
     # lee las ciudades almacenadas en el fichero y las añade al mapa
     for ciudad in cities['ciudades']:
         nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
         mapa.addCiudad(nueva_ciudad)
+        print(ciudad)
 
     print(mapa)
 
-    file.close()
+    
 
 
 
