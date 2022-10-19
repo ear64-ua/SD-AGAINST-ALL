@@ -1,8 +1,11 @@
 
 # Mapa
 
-El mapa consiste en un tablero de 20x20 que va a estar fornada por cuatro cuadrantes en las que cada una de ellas estará representando una ciudad
-![mapa](documentacion/mapa.jpg)
+El mapa consiste en un tablero de 20x20 que va a estar fornada por cuatro cuadrantes en las que cada una de ellas estará representando una ciudad.
+Cada vez que un jugador cambia de ciudad, se le cambia el cuadrante en el que está posicionado
+</br></br>
+
+<img src=documentacion/mapa.jpg width=400px height=400px>
 
 # Ciudad
 
@@ -13,8 +16,9 @@ Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 - Posiciones Alimentos
 - Posiciones Jugadores
 - Posiciones NPC's
+</br>
 
-![ciudad](documentacion/ciudades.jpg)
+<img src=documentacion/ciudades.jpg width=500px height=500px>
 
 # Steps:
 
