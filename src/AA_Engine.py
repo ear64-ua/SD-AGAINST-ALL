@@ -3,6 +3,9 @@ import random
 import socket
 import sys
 from AA_Player import Modulo
+from pymongo import MongoClient   
+import pymongo
+
 
 VACIO = '*'
 TAM_CIUDAD = 10
@@ -153,33 +156,84 @@ def array2json(array):
         }
 
     return c
-        
+
+# Busca si el alias de un jugador existe en la base de datos
+def findPlayer(collection,data):
+
+    try:
+        result = collection.find_one(data)
+        # Si no encuentra ninguno devuelve None
+        if result == None:
+            return False
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    return True
+
+def autentificarJugador(player):
+
+    player.send("Introduce your alias and password:".encode())
+    login = player.recv(1024).decode()
+    dataJson = json.loads(login)
+
+    try:
+        conn = MongoClient()
+        print("Connected to MongoDB successfully!!!")
+    except:  
+        print("Could not connect to MongoDB")
+        return False
+
+    db = conn.gameDB
+    collection = db.players
+
+    if findPlayer(collection,{'alias' : dataJson['alias'], 'password' : dataJson['password']}):
+        return True
+    
+    return False
+
 
 def main():
 
-    mapa = Mapa(TAM_TABLERO)
-    cities = ''
+    ### Conexión AA_Weather
+
+    #mapa = Mapa(TAM_TABLERO)
+    #cities = ''
 
     # guardar el puerto e IP de weather
-    AA_Weather = Modulo('AA_Weather')
+    #AA_Weather = Modulo('AA_Weather')
 
-    cities = sendWeather(AA_Weather)
-
+    #cities = sendWeather(AA_Weather)
 
     # lee las ciudades almacenadas en el fichero y las añade al mapa
-    for ciudad in cities['ciudades']:
-        nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
-        mapa.addCiudad(nueva_ciudad)
-        print(ciudad)
+    #for ciudad in cities['ciudades']:
+    #    nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
+    #    mapa.addCiudad(nueva_ciudad)
+    #    print(ciudad)
 
-    print(mapa)
-
-    
+    #print(mapa)
 
 
+    ### Conexión AA_Player
 
+    AA_Engine = Modulo('AA_Engine')
+    engine_socket = socket.socket() 
+    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
 
+    engine_socket.listen(4)
 
+    while True:
+        player_1, address_1 = engine_socket.accept()  
+        print("Connection from: " + str(address_1))
+
+        if autentificarJugador(player_1):
+            print('Existe')
+        else:
+            print('No existe')
+
+        player_1.close()
+        
 
 if __name__ == "__main__":
     main()

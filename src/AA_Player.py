@@ -1,3 +1,4 @@
+from base64 import encode
 import socket
 import sys
 import json
@@ -27,10 +28,24 @@ class Modulo:
     def getPort(self):
         return self.port
 
-def conectarPartida():
+def conectarPartida(Broker, AA_Engine):
 
-    alias = input('Alias: ')
-    password = input('Password: ')
+    engine_socket = socket.socket()
+    engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
+
+    msg = engine_socket.recv(1024).decode() 
+    print(msg)
+
+    login = {   'alias' : input('Alias: '),
+                'password' : input('Password: ')
+            }
+
+    login = json.dumps(login)
+
+    engine_socket.send(login.encode())
+
+    engine_socket.close()
+
     # ... autenticación en Engine
     return
 
@@ -139,7 +154,7 @@ def main():
             updateRegistry(AA_Registry)
             return
         elif opcion == '3':
-            conectarPartida()
+            conectarPartida(Broker,AA_Engine)
         else:
             break
 
