@@ -157,7 +157,7 @@ def array2json(array):
 
     return c
 
-# Busca si el alias de un jugador existe en la base de datos
+# Busca si el jugador con el alias y password existe en nuestra base de datos
 def findPlayer(collection,data):
 
     try:
@@ -174,7 +174,7 @@ def findPlayer(collection,data):
 
 def autentificarJugador(player):
 
-    player.send("Introduce your alias and password:".encode())
+    player.send("Login with your alias and password:".encode())
     login = player.recv(1024).decode()
     dataJson = json.loads(login)
 
@@ -188,7 +188,7 @@ def autentificarJugador(player):
     db = conn.gameDB
     collection = db.players
 
-    if findPlayer(collection,{'alias' : dataJson['alias'], 'password' : dataJson['password']}):
+    if findPlayer(collection,dataJson):
         return True
     
     return False
@@ -228,9 +228,9 @@ def main():
         print("Connection from: " + str(address_1))
 
         if autentificarJugador(player_1):
-            print('Existe')
+            player_1.send("Conectando a partida...".encode())
         else:
-            print('No existe')
+            player_1.send("Alias o password incorrecto !".encode())
 
         player_1.close()
         

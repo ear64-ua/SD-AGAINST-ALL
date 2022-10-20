@@ -44,6 +44,9 @@ def conectarPartida(Broker, AA_Engine):
 
     engine_socket.send(login.encode())
 
+    msg = engine_socket.recv(1024).decode()
+    print(msg)
+
     engine_socket.close()
 
     # ... autenticación en Engine

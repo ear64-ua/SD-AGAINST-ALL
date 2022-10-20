@@ -43,7 +43,7 @@ while(True):
 
     c.close()
 ````
-Las opciones que tenrá un juagador serán de insertar un registro en la base de datos o actualizarlo. Los datos recibidos serán del tipo string, que convertiremos al formato **JSON**. Se enviará un mensaje acerca del estado final de la consulta:
+Las opciones que tendrá un jugador serán de insertar un registro en la base de datos o actualizarlo. Los datos recibidos serán del tipo string, que convertiremos al formato **JSON**. Se enviará un mensaje acerca del estado final de la consulta:
 
 ````python
     dataReceived = c.recv(1024).decode()
