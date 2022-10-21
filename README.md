@@ -145,10 +145,10 @@ conn.send('update'.encode())
 msg = conn.recv(1024).decode()
 
 conn.send(oldData.encode())
-msg = conn.recv(1024).decode() # confirmación de datos antiguos
+msg = conn.recv(1024).decode() 
 
 conn.send(newData.encode())
-msg = conn.recv(1024).decode() # confirmación de insert
+msg = conn.recv(1024).decode()
 
 ```
 
