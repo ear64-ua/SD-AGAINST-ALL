@@ -8,7 +8,7 @@
         {
             "Id": "Broker", 
             "IP": "127.0.0.1",
-            "port": "1500"
+            "port": "29092"
         },
         {
             "Id": "AA_Registry",
