@@ -7,6 +7,43 @@ Cada vez que un jugador cambia de ciudad, se le cambia el cuadrante en el que es
 
 <img src=documentacion/mapa.jpg width=400px height=400px>
 
+Al crear una instancia de la clase mapa, se iniciará una matriz N x N, donde N es el número de ciudades.
+
+```python
+class Mapa:
+
+    def __init__(self):
+        self.ciudades = [ [ 0 for i in range(NUM_CITIES//2) ] for j in range(NUM_CITIES//2) ]
+```
+
+Cuando añadimos una ciudad, se le debe pasar las posiciones del cuadrante donde va a posicionarse.
+```python
+    def addCiudad(self,i,j,ciudad):
+        self.ciudades[i][j] = ciudad
+```
+
+Para imprimir el mapa, primero recorremos la primera fila de ciudades ( [0][i] donde i varía entre 0 y 1 ) y luego la segunda fila de </br> ciudades 
+( [1][i] donde i varía entre 0 y 1 )
+```python
+    def __str__(self):
+        ...
+
+        for fil in range(TAM_CIUDAD):
+            ...
+
+            for i in (0,1):
+                c+= self.ciudades[0][i].str(fil)
+                ...
+
+        for fil in range(TAM_CIUDAD):
+            ...
+
+            for i in (0,1):
+                c+= self.ciudades[1][i].str(fil)
+                ...
+        ...
+```
+
 # Ciudad
 
 Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
@@ -19,6 +56,40 @@ Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 </br>
 
 <img src=documentacion/ciudades.jpg width=500px height=500px>
+
+La clase ciudad está creada de tal manera que se crea una matriz de 10x10, donde en cada casilla se posicionará una entidad u otra. Se generarán los parámetros de número de minas y número de alimentos aleatoriamente.
+```python
+MIN_ALIMENTOS = 15; MAX_ALIMENTOS = 25
+MAX_MINAS = 25; MIN_MINAS = 15
+NUM_CITIES = 4; TAM_CIUDAD = 10
+
+
+class Ciudad:
+    def __init__(self,nombre,temperatura,tam):
+        self.casillas = [ [ 0 for i in range(TAM_CIUDAD) ] for j in range(TAM_CIUDAD) ]
+        self.nombre = nombre
+        self.temperatura = temperatura
+        self.alimentos = random.randint(MIN_ALIMENTOS,MAX_ALIMENTOS)
+        self.minas = random.randint(MIN_MINAS,MAX_MINAS)
+        self.tam = tam
+```
+
+En el método empleado para imprimir una ciudad, se le pasa como parámetro la fila seleccionada y se le devolverá la fila completa de las entidades que se almacenan en cada casilla.
+
+```python
+
+    def str(self, i):
+
+        ...
+
+        for j in range(TAM_CIUDAD):
+            c+=str(self.casillas[i][j])
+            ...
+
+        return c
+```
+
+`TODO: implementar y documentar el método setCasillas`
 
 # Módulos
 
