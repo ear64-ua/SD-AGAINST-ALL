@@ -152,9 +152,61 @@ msg = conn.recv(1024).decode()
 
 ```
 
-### Unirse a partida
+### Unirse a partida
 
-...
+Cuando un jugador intenta conectarse a una partida, primero deberá pasar por un estado de verificación, donde el jugador registrado introducirá su alias y contraseña para enviarlos mediante una conexión por sockets al servidor AA_Engine.
+
+```python
+import socket
+
+def conectarPartida(Broker, AA_Engine):
+
+    engine_socket = socket.socket()
+    engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
+
+    msg = engine_socket.recv(1024).decode() 
+
+    login = {   'alias' : input('Alias: '),
+                'password' : input('Password: ')
+            }
+
+    login = json.dumps(login)
+
+    engine_socket.send(login.encode())
+
+    data = engine_socket.recv(1024).decode()
+    data = json.loads(data)
+
+    if data['verified']:
+        jugarPartida(Broker)
+
+    engine_socket.close()
+
+    return
+
+```
+
+Si el jugador se ha logueado sin problemas, podrá empezar con la partida enviando produciendo unos movimientos, que serán W (west) , S (south), E (east), N (north). El envío se realizará mediante el servicio **Kafka** y habrá un tiempo de espera hasta introducir el siguiente movimiento.
+
+```python
+from kafka import KafkaProducer
+from time import sleep
+
+def jugarPartida(Broker):
+
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+                         value_serializer=lambda x: 
+                         json.dumps(x).encode('utf-8'))
+
+    while True:
+        data = {'move' : input('Choose your direction (E,W,S,N): ')}
+        producer.send('player_move', value=data)
+        sleep(5)
+```
+
+
+
+`TODO: completar código y descripción con implementación final`
 
 
 ## Registro
@@ -321,6 +373,64 @@ def chooseCity():
     return data['ciudades'][indx]
 ````
 
+## Motor
+
+El motor del juego (*AA_Engine*) se basa en implementar la lógica del juego y el servidor central de la comunicación entre procesos.
+
+En primer lugar, el servidor estará escuchando en un puerto para que los jugadores puedan conectarse. Una vez aceptadas las peticiones, se crearán varios hilos por cada conexión.
+
+```python
+conn, addr = engine_socket.accept()  
+
+thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
+thread.start()
+```
+La función que se encargará de manejar dichos hilos, será `handle_player`, en donde se verificará la existencia del jugador en la base de datos, y en caso de existir, se conectará a una partida.
+
+```python
+def handle_player(conn,addr,AA_Broker):
+
+    if autentificarJugador(conn):
+        data = {    'msg' : 'Conectando a partida...',
+                    'verified' : True
+                }
+        data = json.dumps(data)
+        conn.send(data.encode())
+
+        escucharMovimientos(AA_Broker)
+
+    else:
+        data = {    'msg' : 'Alias o password incorrecto !',
+                    'verified' : False
+                }
+        data = json.dumps(data)
+        conn.send(data.encode())
+
+    conn.close()
+
+```
+
+Cuando un jugador se conecte a una partida, se hará uso de la tecnología de **kafka** para escuchar los movimientos recibidos del productor ( *AA_Player* ). El método `escucharMovimientos()` , estará consumiendo dichos movimientos.
+
+```python
+from kafka import KafkaConsumer
+
+
+def escucharMovimientos(Broker):
+    consumer = KafkaConsumer(
+    'player_move',
+     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+     auto_offset_reset='earliest',
+     enable_auto_commit=True,
+     group_id='my-group',
+     value_deserializer=lambda x: json.loads(x.decode('utf-8')))
+
+    for message in consumer:
+        message = message.value
+        print('{} move registered '.format(message))
+```
+
+`TODO: completar código y descripción con implementación final`
 
 # Steps:
 
