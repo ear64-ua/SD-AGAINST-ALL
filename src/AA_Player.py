@@ -54,13 +54,14 @@ def conectarPartida(Broker, AA_Engine):
 
 def insertRegistry(AA_Registry):
 
+    # Se pedirá al usuario el alias y contraseña
     datos = {   "alias":     input('alias: '), 
                 "password": input('password: '),
                 "nivel":    '1',
                 "ef":       '0',
                 "ec":       '0'
             }
-    
+    # Convertimos datos en un string con formato JSON
     datos = json.dumps(datos)
     
     try:
@@ -71,11 +72,12 @@ def insertRegistry(AA_Registry):
     try:
         conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
 
-        # send action to server
+        # notificamos al servidor que se quiere insertar
         conn.send('insert'.encode())
         msg = conn.recv(1024).decode()
         print(msg)
 
+        # mandamos los datos al servidor
         conn.send(datos.encode())
         msg = conn.recv(1024).decode()
         print(msg)
@@ -139,28 +141,23 @@ def menu():
 
 def main():
     
-    args = open('src/json_files/addresses.json')
-    data = json.load(args)
-
+    # Creamos los módulos para conseguir las direcciones necesarias
     AA_Engine = Modulo('AA_Engine')
     AA_Registry = Modulo('AA_Registry')
     Broker = Modulo('Broker') 
 
-    args.close()
-
     while True:
         opcion = menu()
 
-        if opcion == '1':
+        if opcion == '1': # Creamos un usuario
             insertRegistry(AA_Registry)
-        elif opcion == '2':
+        elif opcion == '2': # Editamos la contraseña del usuario
             updateRegistry(AA_Registry)
             return
-        elif opcion == '3':
+        elif opcion == '3': # Conexión a partida
             conectarPartida(Broker,AA_Engine)
         else:
             break
-
 
     
 
