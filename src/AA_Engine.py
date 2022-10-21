@@ -6,7 +6,8 @@ import threading
 from AA_Player import Modulo
 from pymongo import MongoClient   
 import pymongo
-
+from kafka import KafkaConsumer
+from json import loads
 
 VACIO = '*'
 TAM_CIUDAD = 10
@@ -194,14 +195,39 @@ def autentificarJugador(player):
     
     return False
 
+def escucharMovimientos():
+    consumer = KafkaConsumer(
+    'player_move',
+     bootstrap_servers=['localhost:29092'],
+     auto_offset_reset='earliest',
+     enable_auto_commit=True,
+     group_id='my-group',
+     value_deserializer=lambda x: loads(x.decode('utf-8')))
+
+    for message in consumer:
+        message = message.value
+        print('{} moved registered '.format(message))
+    
+
 def handle_player(conn,addr):
 
     print("Connection from: " + str(addr))
 
     if autentificarJugador(conn):
-        conn.send("Conectando a partida...".encode())
+        data = {    'msg' : 'Conectando a partida...',
+                    'verified' : True
+                }
+        data = json.dumps(data)
+        conn.send(data.encode())
+
+        escucharMovimientos()
+
     else:
-        conn.send("Alias o password incorrecto !".encode())
+        data = {    'msg' : 'Alias o password incorrecto !',
+                    'verified' : False
+                }
+        data = json.dumps(data)
+        conn.send(data.encode())
 
     conn.close()
 

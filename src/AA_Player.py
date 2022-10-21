@@ -2,6 +2,10 @@ from base64 import encode
 import socket
 import sys
 import json
+from kafka import KafkaProducer
+from time import sleep
+from json import dumps
+
 
 class Modulo:
     
@@ -28,6 +32,20 @@ class Modulo:
     def getPort(self):
         return self.port
 
+
+def jugarPartida(Broker):
+
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+                         value_serializer=lambda x: 
+                         dumps(x).encode('utf-8'))
+
+    while True:
+        data = {'move' : input('Choose your direction (E,W,S,N): ')}
+        producer.send('player_move', value=data)
+        sleep(5)
+
+
+# El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
 def conectarPartida(Broker, AA_Engine):
 
     engine_socket = socket.socket()
@@ -44,8 +62,13 @@ def conectarPartida(Broker, AA_Engine):
 
     engine_socket.send(login.encode())
 
-    msg = engine_socket.recv(1024).decode()
-    print(msg)
+    data = engine_socket.recv(1024).decode()
+    data = json.loads(data)
+
+    print(data['msg'])
+
+    if data['verified']:
+        jugarPartida(Broker)
 
     engine_socket.close()
 
