@@ -21,6 +21,78 @@ Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 <img src=documentacion/ciudades.jpg width=500px height=500px>
 
 # Módulos
+
+Cada módulo representan los servidores o clientes de la partida.
+
+Se han definido distintos módulos dentro de un fichero JSON:
+```json
+{
+    "direcciones": [
+        {
+            "Id": "AA_Engine",
+            "IP": "x.x.x.x",
+            "port": "x"
+        },
+        {
+            "Id": "Broker", 
+            "IP": "x.x.x.x",
+            "port": "x"
+        },
+        {
+            "Id": "AA_Registry",
+            "IP": "x.x.x.x",
+            "port": "x"
+        },
+        {
+            "Id" : "AA_Weather",
+            "IP" : "x.x.x.x",
+            "port": "x"
+        }
+    ]
+}
+```
+
+Para representarlos y crear instancias con la clase **Modulo**:
+```python
+class Modulo:
+    def __init__(self,id):
+
+        file = open('src/json_files/addresses.json')
+        data = json.load(file)
+        file.close()
+
+        for dir in data['direcciones']:
+            if dir['Id'] == id:
+                self.ip = dir['IP']
+                self.port = int(dir['port'])
+
+    def setIp(self,ip):
+        self.ip = ip
+    
+    def setPort(self,port):
+        self.port = port
+    
+    def getIp(self):
+        return self.ip
+    
+    def getPort(self):
+        return self.port
+
+```
+
+De esta manera, serán mucho más fácil instanciar y conseguir las direcciones a las que conectarse. Por ejemplo para crear una conexión con el módulo AA_Engine, tan sólo tendriamos que indicar su id y ya podríamos conseguir sus direcciones:
+
+```python
+AA_Engine = Modulo('AA_Engine')
+
+ip = AA_Engine.getIp()
+port = AA_Engine.getPort()
+
+```
+
+
+
+
 ## Registro
 
 El registro (*AA_Registry.py*) se encarga de almacenar los datos de un jugador.
@@ -126,7 +198,7 @@ collection = db.players
 El clima (*AA_Weather.py*) se encarga de estar a la espera de peticiones del engine (*AA_Engine.py*) para enviar una ciudad aleatoria de su base de datos.
 
 Para la base de datos, se ha usado esta vez un archivo de JSON:
-````
+````json
 {
     "ciudades": [
         {
