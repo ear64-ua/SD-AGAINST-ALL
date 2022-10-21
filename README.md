@@ -90,7 +90,71 @@ port = AA_Engine.getPort()
 
 ```
 
+## Jugador
 
+El jugador (*AA_Player*) será el que podrá registrarse en la base de datos, actualizar sus datos o conectarse a una partida.
+
+Al principio del programa, se le mostrará un menú con las distintas opciones
+
+``` sh
+Elige una opción:
+1. Crear perfil
+2. Editar perfil
+3. Unirse a partida
+4 Salir
+
+> Tu opción: 
+```
+
+### Crear perfil
+
+La opción *Crear perfil* llamará a la función `insertRegistry(AA_Registry)`, que leerá el alias y contraseña introducidos por el usuario convirtiéndolo en *string*, con formato *JSON*. Se enviará un mensaje al servidor con la confirmación de que va a insertar y envia vía socket los datos.
+
+```python
+datos = {   "alias":     input('alias: '), 
+            "password": input('password: '),
+            "nivel":    '1',
+            "ef":       '0',
+            "ec":       '0'
+         }
+datos = json.dumps(datos)
+    
+conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+    
+conn.send('insert'.encode())
+msg = conn.recv(1024).decode()
+                
+conn.send(datos.encode())
+msg = conn.recv(1024).decode()
+```
+
+### Editar perfil
+
+A la hora de editar el perfil, se cambiará la contraseña del jugador, indicando su alias y contraseña.
+
+```python
+data = {    "alias": input('old alias: '),
+             "password": input('password: ')
+        }
+oldData = json.dumps(data)
+
+data = {    "password": input('new password: ') }
+newData = json.dumps(data)
+
+conn.send('update'.encode())
+msg = conn.recv(1024).decode()
+
+conn.send(oldData.encode())
+msg = conn.recv(1024).decode() # confirmación de datos antiguos
+
+conn.send(newData.encode())
+msg = conn.recv(1024).decode() # confirmación de insert
+
+```
+
+### Unirse a partida
+
+...
 
 
 ## Registro
