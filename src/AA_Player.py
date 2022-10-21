@@ -49,7 +49,6 @@ def conectarPartida(Broker, AA_Engine):
 
     engine_socket.close()
 
-    # ... autenticación en Engine
     return
 
 def insertRegistry(AA_Registry):

@@ -2,6 +2,7 @@ import json
 import random
 import socket
 import sys
+import threading
 from AA_Player import Modulo
 from pymongo import MongoClient   
 import pymongo
@@ -193,9 +194,37 @@ def autentificarJugador(player):
     
     return False
 
+def handle_player(conn,addr):
+
+    print("Connection from: " + str(addr))
+
+    if autentificarJugador(conn):
+        conn.send("Conectando a partida...".encode())
+    else:
+        conn.send("Alias o password incorrecto !".encode())
+
+    conn.close()
 
 def main():
 
+    ### Conexión AA_Player
+
+    AA_Engine = Modulo('AA_Engine')
+    engine_socket = socket.socket() 
+    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
+
+    engine_socket.listen()
+
+    while True:
+        conn, addr = engine_socket.accept()  
+
+        thread = threading.Thread(target=handle_player, args = (conn,addr))
+        thread.start()
+
+        print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
+
+        
+    
     ### Conexión AA_Weather
 
     #mapa = Mapa(TAM_TABLERO)
@@ -214,26 +243,6 @@ def main():
 
     #print(mapa)
 
-
-    ### Conexión AA_Player
-
-    AA_Engine = Modulo('AA_Engine')
-    engine_socket = socket.socket() 
-    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
-
-    engine_socket.listen(4)
-
-    while True:
-        player_1, address_1 = engine_socket.accept()  
-        print("Connection from: " + str(address_1))
-
-        if autentificarJugador(player_1):
-            player_1.send("Conectando a partida...".encode())
-        else:
-            player_1.send("Alias o password incorrecto !".encode())
-
-        player_1.close()
-        
 
 if __name__ == "__main__":
     main()
