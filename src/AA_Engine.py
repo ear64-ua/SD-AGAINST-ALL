@@ -11,7 +11,6 @@ from json import loads
 
 VACIO = '*'
 TAM_CIUDAD = 10
-TAM_TABLERO = 20
 MIN_ALIMENTOS = 15
 MAX_ALIMENTOS = 25
 MAX_MINAS = 25
@@ -20,32 +19,46 @@ NUM_CITIES = 4
 
 
 class Ciudad:
-    def __init__(self,nombre,temperatura,tam):
+    def __init__(self,nombre,temperatura,tam, paint):
+        self.casillas = [ [ 0 for i in range(TAM_CIUDAD) ] for j in range(TAM_CIUDAD) ]
         self.nombre = nombre
         self.temperatura = temperatura
         self.alimentos = random.randint(MIN_ALIMENTOS,MAX_ALIMENTOS)
         self.minas = random.randint(MIN_MINAS,MAX_MINAS)
         self.tam = tam
+        self.paint = paint
 
     def getNombre(self):
         return self.nombre
 
+    def str(self, i):
+
+        c = ''
+
+        for j in range(TAM_CIUDAD):
+            c+=self.paint#str(self.casillas[i][j])
+            c+='  '
+
+        return c
+
 class Mapa:
 
-    def __init__(self, tam):
-        self.tam = tam
-        self.ciudades = []
+    def __init__(self):
+        self.ciudades = [ [ 0 for i in range(NUM_CITIES//2) ] for j in range(NUM_CITIES//2) ]
         
-    def addCiudad(self,ciudad):
-        self.ciudades.append(ciudad)
+    def addCiudad(self,i,j,ciudad):
+        self.ciudades[i][j] = ciudad
 
     def __str__(self):
 
+        ## ---  Nombre dos primeras ciudades ---
         c = '       '
-        c += self.ciudades[0].getNombre()
-        c+=('\t\t\t  ')
-        c += self.ciudades[1].getNombre()
+        c += self.ciudades[0][0].getNombre()
+        c+=('                     ')
+        c += self.ciudades[0][1].getNombre()
+        ## ---------------------------------------
 
+        ## -------   Número columnas        -----
         c += '\n       '
         for i in range(21):
             if i == 0:
@@ -55,45 +68,57 @@ class Mapa:
                 c +='  '
             else: 
                 c+=' '
+        ## ---------------------------------------
 
         c += '\n'
         c += '    '
 
+        ## ---------  Pared superior   -----------
         for i in range(21):
             c += '#  '
         c += '\n'
 
+        ## ---------------------------------------
+
+
+        ## --------- Casillas ciudades -----------
+
         num_fila = 0
-        columna = 0
-        indx = 0
 
-        # recorremos por cada fila, dos ciudades e imprimimos sus valores
-        for bloque in range(2):
+        for fil in range(TAM_CIUDAD):
 
-            for fila in range(10):
-                c += str(num_fila+1)
-                if num_fila+1 < 10:
-                    c +=' '
-                c += '  #  '
+            c+= str(num_fila+1)
+            if num_fila+1 < 10:
+                c +=' '
+            c += '  #  '
 
-                # agarramos las dos ciudades
-                for ciudad in  self.ciudades[indx:indx+2]:
-                    for i in range(10):
-                        c += VACIO
-                        c += '  '
-                 
+            for i in (0,1):
+                c+= self.ciudades[0][i].str(fil)
+            c+='\n'
 
-                num_fila += 1
-                
-                c += '\n'
+            num_fila+=1
 
-            # pasamos a las siguientes ciudades
-            indx += 2
+        for fil in range(TAM_CIUDAD):
+            c+= str(num_fila+1)
+
+            c += '  #  '
+
+            for i in (0,1):
+                c+= self.ciudades[1][i].str(fil)
+            c+='\n'
+
+            num_fila+=1
+
+        ## ---------------------------------------
+
+        ## ---   Nombre dos últimas ciudades   ---
                  
         c += '       '
-        c += self.ciudades[2].getNombre()
-        c+=('\t\t\t  ')
-        c += self.ciudades[3].getNombre()
+        c += self.ciudades[1][0].getNombre()
+        c+=('                       ')
+        c += self.ciudades[1][1].getNombre()
+
+        ## ----------------------------------------
 
         return c
 
@@ -235,40 +260,48 @@ def main():
 
     ### Conexión AA_Player
 
-    AA_Engine = Modulo('AA_Engine')
-    Broker = Modulo('Broker')
-    engine_socket = socket.socket() 
-    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
+    # AA_Engine = Modulo('AA_Engine')
+    # Broker = Modulo('Broker')
+    # engine_socket = socket.socket() 
+    # engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
 
-    engine_socket.listen()
+    # engine_socket.listen()
 
-    while True:
-        conn, addr = engine_socket.accept()  
+    # while True:
+    #     conn, addr = engine_socket.accept()  
 
-        thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
-        thread.start()
+    #     thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
+    #     thread.start()
 
-        print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
+    #     print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
 
         
     
-    ### Conexión AA_Weather
+    ## Conexión AA_Weather
 
-    #mapa = Mapa(TAM_TABLERO)
-    #cities = ''
+    mapa = Mapa()
+    cities = ''
 
-    # guardar el puerto e IP de weather
-    #AA_Weather = Modulo('AA_Weather')
+    #guardar el puerto e IP de weather
+    AA_Weather = Modulo('AA_Weather')
 
-    #cities = sendWeather(AA_Weather)
+    cities = sendWeather(AA_Weather)
 
-    # lee las ciudades almacenadas en el fichero y las añade al mapa
-    #for ciudad in cities['ciudades']:
-    #    nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD)
-    #    mapa.addCiudad(nueva_ciudad)
-    #    print(ciudad)
 
-    #print(mapa)
+    num_bloque = 0
+    #lee las ciudades almacenadas en el fichero y las añade al mapa
+    for ciudad in cities['ciudades']:
+
+        nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD,str(num_bloque))
+
+        # i y j tomarán los valores en binario con longitud de dos bits de num_bloque (00,01,10,11)
+        i = int(f'{num_bloque:02b}'[0])
+        j = int(f'{num_bloque:02b}'[1])
+        
+        mapa.addCiudad(i,j,nueva_ciudad)
+        num_bloque += 1
+
+    print(mapa)
 
 
 if __name__ == "__main__":
