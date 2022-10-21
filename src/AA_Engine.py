@@ -195,10 +195,10 @@ def autentificarJugador(player):
     
     return False
 
-def escucharMovimientos():
+def escucharMovimientos(Broker):
     consumer = KafkaConsumer(
     'player_move',
-     bootstrap_servers=['localhost:29092'],
+     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='earliest',
      enable_auto_commit=True,
      group_id='my-group',
@@ -209,7 +209,7 @@ def escucharMovimientos():
         print('{} moved registered '.format(message))
     
 
-def handle_player(conn,addr):
+def handle_player(conn,addr,AA_Broker):
 
     print("Connection from: " + str(addr))
 
@@ -220,7 +220,7 @@ def handle_player(conn,addr):
         data = json.dumps(data)
         conn.send(data.encode())
 
-        escucharMovimientos()
+        escucharMovimientos(AA_Broker)
 
     else:
         data = {    'msg' : 'Alias o password incorrecto !',
@@ -236,6 +236,7 @@ def main():
     ### Conexión AA_Player
 
     AA_Engine = Modulo('AA_Engine')
+    Broker = Modulo('Broker')
     engine_socket = socket.socket() 
     engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
 
@@ -244,7 +245,7 @@ def main():
     while True:
         conn, addr = engine_socket.accept()  
 
-        thread = threading.Thread(target=handle_player, args = (conn,addr))
+        thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
         thread.start()
 
         print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
