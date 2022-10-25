@@ -16,7 +16,17 @@ MAX_ALIMENTOS = 25
 MAX_MINAS = 25
 MIN_MINAS = 15
 NUM_CITIES = 4
+MIN_CLIMA = -10
+MAX_CLIMA = 10
 
+class Player:
+    def __init__(self,alias,posX,posY,nivel):
+        self.alias = alias
+        self.posX = posX
+        self.posY = posY
+        self.nivel = nivel
+        self.EF = random.randint(MIN_CLIMA,MAX_CLIMA)
+        self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
 
 class Ciudad:
     def __init__(self,nombre,temperatura,tam, paint):
@@ -303,7 +313,12 @@ def conexion_clima():
 
 def main():
 
+    ##mostrar menu de partida
+
+    ##esperar conexiones de jugadores
+    ##al arrancar la partida manualmente
     conexion_clima()
+    ##
     
 
 
