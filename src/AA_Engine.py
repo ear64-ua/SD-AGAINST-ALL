@@ -256,27 +256,26 @@ def handle_player(conn,addr,AA_Broker):
 
     conn.close()
 
-def main():
+def conexion_player():
+    ## Conexión AA_Player
 
-    ### Conexión AA_Player
+    AA_Engine = Modulo('AA_Engine')
+    Broker = Modulo('Broker')
+    engine_socket = socket.socket() 
+    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
 
-    # AA_Engine = Modulo('AA_Engine')
-    # Broker = Modulo('Broker')
-    # engine_socket = socket.socket() 
-    # engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
+    engine_socket.listen()
 
-    # engine_socket.listen()
+    while True:
+        conn, addr = engine_socket.accept()  
 
-    # while True:
-    #     conn, addr = engine_socket.accept()  
+        thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
+        thread.start()
 
-    #     thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
-    #     thread.start()
+        print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
 
-    #     print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
 
-        
-    
+def conexion_clima():
     ## Conexión AA_Weather
 
     mapa = Mapa()
@@ -286,7 +285,6 @@ def main():
     AA_Weather = Modulo('AA_Weather')
 
     cities = sendWeather(AA_Weather)
-
 
     num_bloque = 0
     #lee las ciudades almacenadas en el fichero y las añade al mapa
@@ -302,6 +300,11 @@ def main():
         num_bloque += 1
 
     print(mapa)
+
+def main():
+
+    conexion_clima()
+    
 
 
 if __name__ == "__main__":
