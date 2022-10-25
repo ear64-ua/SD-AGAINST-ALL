@@ -529,3 +529,10 @@ def escucharMovimientos(Broker):
     - Linux: sudo service mongodb start
 4. Run AA_Registry.py
 5. Run AA_Player.py
+
+## Consideraciones cuando un jugador entra en una partida
+
+- Los factores de clima frío y calor se deben generar aleatoriamente cuando un jugador entra en la partida. Los valores son entre -10 y +10
+- Cuando un jugador cambia de cuadrante, se debe aplicar el factor de frío o calor, según sea la temperatura de la ciudad donde entra
+- Los factores de clima permanecen constantes durante toda la partida
+- Los factores de clima se deben almacenar en base de datos, junto con el nivel y posición del jugador, por si el AA_Engine cae, y tiene que recuperar la partida
