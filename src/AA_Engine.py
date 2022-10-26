@@ -19,6 +19,11 @@ NUM_CITIES = 4
 MIN_CLIMA = -10
 MAX_CLIMA = 10
 
+colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
+
+def colored_background(r, g, b, text):
+    return f'\033[48;2;{r};{g};{b}m{text}\033[0m'
+
 class Player:
     def __init__(self,alias,posX,posY,nivel):
         self.alias = alias
@@ -29,14 +34,15 @@ class Player:
         self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
 
 class Ciudad:
-    def __init__(self,nombre,temperatura,tam, paint):
+    def __init__(self,nombre,temperatura,tam, num):
         self.casillas = [ [ 0 for i in range(TAM_CIUDAD) ] for j in range(TAM_CIUDAD) ]
         self.nombre = nombre
         self.temperatura = temperatura
         self.alimentos = random.randint(MIN_ALIMENTOS,MAX_ALIMENTOS)
         self.minas = random.randint(MIN_MINAS,MAX_MINAS)
         self.tam = tam
-        self.paint = paint
+
+        self.rgb = colors[int(num)]
 
     def getNombre(self):
         return self.nombre
@@ -46,8 +52,9 @@ class Ciudad:
         c = ''
 
         for j in range(TAM_CIUDAD):
-            c+=self.paint#str(self.casillas[i][j])
-            c+='  '
+            r, g, b = self.rgb
+            c+=colored_background(r,g,b,' ')#str(self.casillas[i][j])
+            c+=colored_background(r,g,b,'  ')
 
         return c
 
@@ -100,7 +107,7 @@ class Mapa:
             c+= str(num_fila+1)
             if num_fila+1 < 10:
                 c +=' '
-            c += '  #  '
+            c += '  # '
 
             for i in (0,1):
                 c+= self.ciudades[0][i].str(fil)
@@ -111,7 +118,7 @@ class Mapa:
         for fil in range(TAM_CIUDAD):
             c+= str(num_fila+1)
 
-            c += '  #  '
+            c += '  # '
 
             for i in (0,1):
                 c+= self.ciudades[1][i].str(fil)
