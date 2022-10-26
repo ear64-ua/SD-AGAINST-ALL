@@ -19,15 +19,15 @@ def chooseCity():
 
 def main():
 
-    AA_Engine =  Modulo('AA_Engine')
+    AA_Weather =  Modulo('AA_Weather')
 
     # inicializamos el socket
     conn = socket.socket() 
-    conn.bind((AA_Engine.getIp(), AA_Engine.getPort())) 
+    conn.bind((AA_Weather.getIp(), AA_Weather.getPort())) 
 
     conn.listen(2)
 
-    print(f' AA_Weather listening for AA_Engine petition...{[AA_Engine.getIp(),AA_Engine.getPort()]} ')
+    print(f' AA_Weather listening for AA_Engine petition...{[AA_Weather.getIp(),AA_Weather.getPort()]} ')
 
     while True:
         engine, address = conn.accept()  

@@ -66,6 +66,7 @@ def conectarPartida(Broker, AA_Engine):
     data = json.loads(data)
 
     print(data['msg'])
+    print()
 
     if data['verified']:
         jugarPartida(Broker)
@@ -103,6 +104,7 @@ def insertRegistry(AA_Registry):
         conn.send(datos.encode())
         msg = conn.recv(1024).decode()
         print(msg)
+        print()
 
     except socket.gaierror:
         print('There an error resolving the host')
@@ -114,7 +116,8 @@ def insertRegistry(AA_Registry):
 def updateRegistry(AA_Registry):
 
     # contraseña antigua
-    data = {    "alias": input('old alias: '),
+    print()
+    data = {    "alias": input('alias: '),
                 "password": input('password: ')
             }
     # convertimos los datos a json para poder enviarlos al servidor
@@ -143,6 +146,7 @@ def updateRegistry(AA_Registry):
         conn.send(newData.encode())
         msg = conn.recv(1024).decode() # confirmación de insert
         print(msg)
+        print()
        
     except socket.gaierror:
         print('There an error resolving the host')
@@ -175,7 +179,6 @@ def main():
             insertRegistry(AA_Registry)
         elif opcion == '2': # Editamos la contraseña del usuario
             updateRegistry(AA_Registry)
-            return
         elif opcion == '3': # Conexión a partida
             conectarPartida(Broker,AA_Engine)
         else:

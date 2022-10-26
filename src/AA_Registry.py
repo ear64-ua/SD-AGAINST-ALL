@@ -1,10 +1,11 @@
 from ast import alias
+from modulefinder import Module
 import sys
 import socket
 import json
 from pymongo import MongoClient   
 import pymongo
-
+from AA_Player import Modulo
 # Busca si el alias de un jugador existe en la base de datos
 def findPlayer(collection,data):
 
@@ -73,7 +74,7 @@ def mongoUpdate(oldData, newData):
             }
         ) 
         # si no se ha actualizado ningún registro, devuelve error
-        if result == None or not result.matched_count > 0:
+        if result == None:
             return False
 
     except pymongo.errors.PyMongoError as e:
@@ -113,22 +114,17 @@ def updating(c):
         c.send('Error while updating !'.encode())
 
 def main():
-
-    if len(sys.argv) != 2:
-        print('ERROR en argumentos. Uso: fichero puerto_escucha')
-        return
     
-    host = '127.0.0.1'
-    port = int(sys.argv[1])
+    AA_Registry = Modulo('AA_Registry')
 
     # inicializamos el socket
     register_socket = socket.socket() 
-    register_socket.bind((host, port)) 
+    register_socket.bind((AA_Registry.getIp(), AA_Registry.getPort())) 
 
     # puede escuchar hasta a 4 jugadores
     register_socket.listen(4)
 
-    print(f'Waiting for someone to register...{[host,port]} ')
+    print(f'Waiting for someone to register...{[AA_Registry.getIp(),AA_Registry.getPort()]} ')
 
     while(True):
 

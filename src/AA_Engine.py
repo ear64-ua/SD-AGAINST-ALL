@@ -326,7 +326,7 @@ def main():
     ##al arrancar la partida manualmente
     conexion_clima()
     ##
-    
+    conexion_player()
 
 
 if __name__ == "__main__":
