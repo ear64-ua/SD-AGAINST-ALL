@@ -20,6 +20,7 @@ MIN_CLIMA = -10
 MAX_CLIMA = 10
 
 colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
+arrayJugadores = []
 
 def colored_background(r, g, b, text):
     return f'\033[48;2;{r};{g};{b}m{text}\033[0m'
@@ -32,6 +33,9 @@ class Player:
         self.nivel = nivel
         self.EF = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
+
+    def __str__(self):
+        return f"alias: {self.alias}, posX: {self.posX}, posY: {self.posY}, nivel: {self.nivel}, frio: {self.EF}, calor: {self.EC}"
 
 class Ciudad:
     def __init__(self,nombre,temperatura,tam, num):
@@ -214,7 +218,7 @@ def findPlayer(collection,data):
         print(e)
         return False
 
-    return True
+    return result
 
 def autentificarJugador(player):
 
@@ -232,10 +236,63 @@ def autentificarJugador(player):
     db = conn.gameDB
     collection = db.players
 
-    if findPlayer(collection,dataJson):
-        return True
+    jugador = findPlayer(collection,dataJson)
+
+    if jugador!=False:
+        return jugador
     
     return False
+
+def moverJugador(player, direccion):
+
+    if direccion == "N":
+        player.posY = int(player.posY) - 1
+        if player.posY < 0:
+            player.posY = 19
+    elif direccion == "S":
+        player.posY = int(player.posY) + 1
+        if player.posY > 19:
+            player.posY = 0
+    elif direccion == "E":
+        player.posX = int(player.posX) + 1
+        if player.posX >= 19:
+            player.posX = 0
+    elif direccion == "W":
+        player.posX = int(player.posX) - 1       
+        if player.posX < 0:
+            player.posX = 19
+    elif direccion == "NE":
+        player.posX = int(player.posX) + 1
+        player.posY = int(player.posY) - 1
+        if player.posY < 0:
+            player.posY = 19
+        if player.posX >= 19:
+            player.posX = 0    
+    elif direccion == "NW":
+        player.posX = int(player.posX) - 1
+        player.posY = int(player.posY) - 1
+        if player.posY < 0:
+            player.posY = 19
+        if player.posX < 0:
+            player.posX = 19   
+    elif direccion == "SE":
+        player.posX = int(player.posX) + 1
+        player.posY = int(player.posY) + 1
+        if player.posY > 19:
+            player.posY = 0
+        if player.posX >= 19:
+            player.posX = 0
+    elif direccion == "SW":
+        player.posX = int(player.posX) - 1
+        player.posY = int(player.posY) + 1
+        if player.posY > 19:
+            player.posY = 0        
+        if player.posX < 0:
+            player.posX = 19        
+    else:
+        return False
+
+    return True
 
 def escucharMovimientos(Broker):
     consumer = KafkaConsumer(
@@ -249,13 +306,22 @@ def escucharMovimientos(Broker):
     for message in consumer:
         message = message.value
         print('{} moved registered '.format(message))
+        direccion = message['move']
+        moverJugador(arrayJugadores[0],direccion)
+        print(arrayJugadores[0])
     
 
 def handle_player(conn,addr,AA_Broker):
 
     print("Connection from: " + str(addr))
 
-    if autentificarJugador(conn):
+    jugador = autentificarJugador(conn)
+
+    if jugador != False:
+        print(jugador)
+        objetoJugador = Player(jugador['alias'], jugador['posX'], jugador['posY'], jugador['nivel'])
+        arrayJugadores.append(objetoJugador)
+
         data = {    'msg' : 'Conectando a partida...',
                     'verified' : True
                 }
@@ -320,12 +386,13 @@ def conexion_clima():
 
 def main():
 
+    arrayJugadores.clear
+
     ##mostrar menu de partida
 
     ##esperar conexiones de jugadores
     ##al arrancar la partida manualmente
     conexion_clima()
-    conexion_player()
     ##
     conexion_player()
 

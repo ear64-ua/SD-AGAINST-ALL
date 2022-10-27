@@ -42,7 +42,7 @@ def jugarPartida(Broker):
     while True:
         data = {'move' : input('Choose your direction (E,W,S,N): ')}
         producer.send('player_move', value=data)
-        sleep(5)
+        sleep(2)
 
 
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
@@ -81,6 +81,8 @@ def insertRegistry(AA_Registry):
     datos = {   "alias":     input('alias: '), 
                 "password": input('password: '),
                 "nivel":    '1',
+                "posX":     '0',
+                "posY":     '0',
                 "ef":       '0',
                 "ec":       '0'
             }
