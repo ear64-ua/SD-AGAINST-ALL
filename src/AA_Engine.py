@@ -325,6 +325,7 @@ def main():
     ##esperar conexiones de jugadores
     ##al arrancar la partida manualmente
     conexion_clima()
+    conexion_player()
     ##
     conexion_player()
 
