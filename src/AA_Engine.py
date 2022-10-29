@@ -20,22 +20,46 @@ MIN_CLIMA = -10
 MAX_CLIMA = 10
 
 colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
+
+#lista de jugadores que van a tomar parte en la partida
 arrayJugadores = []
+
+
 
 def colored_background(r, g, b, text):
     return f'\033[48;2;{r};{g};{b}m{text}\033[0m'
 
 class Player:
-    def __init__(self,alias,posX,posY,nivel):
+    def __init__(self,alias,nivel):
         self.alias = alias
-        self.posX = posX
-        self.posY = posY
+        self.ciudadX = random.randint(0,(NUM_CITIES/2)-1)
+        self.ciudadY = random.randint(0,(NUM_CITIES/2)-1)
+        self.posX = random.randint(0,TAM_CIUDAD-1)
+        self.posY = random.randint(0,TAM_CIUDAD-1)
         self.nivel = nivel
         self.EF = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
+        self.nivelReal = 0
+        print(self.ciudadX)
+        print(self.ciudadY)
+        self.actualizarNivelReal()
 
     def __str__(self):
-        return f"alias: {self.alias}, posX: {self.posX}, posY: {self.posY}, nivel: {self.nivel}, frio: {self.EF}, calor: {self.EC}"
+        return f"alias: {self.alias}, posX: {self.posX}, posY: {self.posY}, nivel: {self.nivel}, nivelReal: {self.nivelReal}, frio: {self.EF}, calor: {self.EC}"
+
+    def getNivelReal(self):
+        return self.nivelReal
+
+    def actualizarNivelReal(self):
+        ciudad = mapa.getCiudad(self.ciudadX,self.ciudadY)
+        temperatura = int(ciudad.getTemperatura())
+        if temperatura >= 25:
+            self.nivelReal = int(self.nivel) + int(self.EC)
+        elif temperatura < 10:
+            self.nivelReal = int(self.nivel) + int(self.EF)
+        else:
+            self.nivelReal = int(self.nivel)        
+            
 
 class Ciudad:
     def __init__(self,nombre,temperatura,tam, num):
@@ -50,6 +74,15 @@ class Ciudad:
 
     def getNombre(self):
         return self.nombre
+
+    def getCasilla(self,x,y):
+        return self.casillas[x][y]
+
+    def setCasilla(self,x,y,valor):
+        self.casillas[x][y] = valor      
+
+    def getTemperatura(self):
+        return self.temperatura
 
     def str(self, i):
 
@@ -66,9 +99,13 @@ class Mapa:
 
     def __init__(self):
         self.ciudades = [ [ 0 for i in range(NUM_CITIES//2) ] for j in range(NUM_CITIES//2) ]
+        self.casillas= [[0 for i in range(TAM_CIUDAD*2)] for j in range(TAM_CIUDAD*2)]
         
     def addCiudad(self,i,j,ciudad):
         self.ciudades[i][j] = ciudad
+
+    def getCiudad(self,x,y):
+        return self.ciudades[x][y]    
 
     def __str__(self):
 
@@ -142,6 +179,9 @@ class Mapa:
         ## ----------------------------------------
 
         return c
+
+#mapa del mundo
+mapa = Mapa()
 
 def sendWeather(AA_Weather):
 
@@ -248,47 +288,71 @@ def moverJugador(player, direccion):
     if direccion == "N":
         player.posY = int(player.posY) - 1
         if player.posY < 0:
-            player.posY = 19
+            player.posY = 9
+            player.ciudadY = abs(int(player.ciudadY)- 1)
+            player.actualizarNivelReal()
     elif direccion == "S":
         player.posY = int(player.posY) + 1
-        if player.posY > 19:
+        if player.posY > 9:
             player.posY = 0
+            player.ciudadY = (int(player.ciudadY) + 1) % 2
+            player.actualizarNivelReal()
     elif direccion == "E":
         player.posX = int(player.posX) + 1
-        if player.posX >= 19:
+        if player.posX > 9:
             player.posX = 0
+            player.ciudadX = (int(player.ciudadX) + 1) % 2
+            player.actualizarNivelReal()
     elif direccion == "W":
         player.posX = int(player.posX) - 1       
         if player.posX < 0:
-            player.posX = 19
+            player.posX = 9
+            player.ciudadX = abs(int(player.ciudadX)- 1)
+            player.actualizarNivelReal()
     elif direccion == "NE":
         player.posX = int(player.posX) + 1
         player.posY = int(player.posY) - 1
         if player.posY < 0:
-            player.posY = 19
-        if player.posX >= 19:
-            player.posX = 0    
+            player.posY = 9
+            player.ciudadY = abs(int(player.ciudadY) - 1)
+            player.actualizarNivelReal()
+        if player.posX > 9:
+            player.posX = 0
+            player.ciudadX = (int(player.ciudadX) + 1) % 2   
+            player.actualizarNivelReal() 
     elif direccion == "NW":
         player.posX = int(player.posX) - 1
         player.posY = int(player.posY) - 1
         if player.posY < 0:
-            player.posY = 19
+            player.posY = 9
+            player.ciudadY = abs(int(player.ciudadY) - 1)
+            player.actualizarNivelReal()
         if player.posX < 0:
-            player.posX = 19   
+            player.posX = 9
+            player.ciudadX = abs(int(player.ciudadX)- 1) 
+            player.actualizarNivelReal()  
     elif direccion == "SE":
         player.posX = int(player.posX) + 1
         player.posY = int(player.posY) + 1
-        if player.posY > 19:
+        if player.posY > 9:
             player.posY = 0
-        if player.posX >= 19:
+            player.ciudadY = (int(player.ciudadY) + 1) % 2
+            player.actualizarNivelReal()
+        if player.posX > 9:
             player.posX = 0
+            player.ciudadX = (int(player.ciudadX) + 1) % 2
+            player.actualizarNivelReal()
     elif direccion == "SW":
         player.posX = int(player.posX) - 1
         player.posY = int(player.posY) + 1
-        if player.posY > 19:
-            player.posY = 0        
+        if player.posY > 9:
+            player.posY = 0
+            player.ciudadY = (int(player.ciudadY) + 1) % 2  
+            player.actualizarNivelReal()      
         if player.posX < 0:
-            player.posX = 19        
+            player.posX = 9
+            player.ciudadX = abs(int(player.ciudadX)- 1)
+            player.actualizarNivelReal()        
     else:
         return False
 
@@ -308,6 +372,7 @@ def escucharMovimientos(Broker):
         print('{} moved registered '.format(message))
         direccion = message['move']
         moverJugador(arrayJugadores[0],direccion)
+        
         print(arrayJugadores[0])
     
 
@@ -319,7 +384,7 @@ def handle_player(conn,addr,AA_Broker):
 
     if jugador != False:
         print(jugador)
-        objetoJugador = Player(jugador['alias'], jugador['posX'], jugador['posY'], jugador['nivel'])
+        objetoJugador = Player(jugador['alias'], jugador['nivel'])
         arrayJugadores.append(objetoJugador)
 
         data = {    'msg' : 'Conectando a partida...',
@@ -361,7 +426,6 @@ def conexion_player():
 def conexion_clima():
     ## Conexión AA_Weather
 
-    mapa = Mapa()
     cities = ''
 
     #guardar el puerto e IP de weather

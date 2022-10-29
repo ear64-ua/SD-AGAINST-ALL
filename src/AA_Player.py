@@ -84,7 +84,8 @@ def insertRegistry(AA_Registry):
                 "posX":     '0',
                 "posY":     '0',
                 "ef":       '0',
-                "ec":       '0'
+                "ec":       '0',
+                "ciudad":   '0'
             }
     # Convertimos datos en un string con formato JSON
     datos = json.dumps(datos)
