@@ -3,9 +3,10 @@ import socket
 import sys
 import json
 from kafka import KafkaProducer
+from kafka import KafkaConsumer
 from time import sleep
 from json import dumps
-
+from json import loads
 
 class Modulo:
     
@@ -156,6 +157,16 @@ def updateRegistry(AA_Registry):
         sys.exit() 
                 
     conn.close()
+
+def mostrarMapa(Broker):
+    consumer = KafkaConsumer(
+    'mapa',
+     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+     auto_offset_reset='earliest',
+     enable_auto_commit=True,
+     group_id='my-group',
+     value_deserializer=lambda x: loads(x.decode('utf-8')))
+    
 
 # Muestra el menú de opciones que tiene el jugador
 def menu():

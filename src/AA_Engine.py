@@ -7,9 +7,11 @@ from AA_Player import Modulo
 from pymongo import MongoClient   
 import pymongo
 from kafka import KafkaConsumer
+from kafka import KafkaProducer
 from json import loads
+from json import dumps
 
-VACIO = '*'
+VACIO = '.'
 TAM_CIUDAD = 10
 MIN_ALIMENTOS = 15
 MAX_ALIMENTOS = 25
@@ -32,6 +34,7 @@ def colored_background(r, g, b, text):
 class Player:
     def __init__(self,alias,nivel):
         self.alias = alias
+        self.aliasCorto = alias[0].upper()
         self.ciudadX = random.randint(0,(NUM_CITIES/2)-1)
         self.ciudadY = random.randint(0,(NUM_CITIES/2)-1)
         self.posX = random.randint(0,TAM_CIUDAD-1)
@@ -48,12 +51,20 @@ class Player:
     def getNivelReal(self):
         return self.nivelReal
 
+    def incrementarNivel(self):
+        self.nivel = int(self.nivel) + 1
+        self.nivelReal = int(self.nivelReal) + 1
+
+    def matar(self):
+        self.nivel = -99
+        self.nivelReal = -99         
+
     def actualizarNivelReal(self):
         ciudad = mapa.getCiudad(self.ciudadX,self.ciudadY)
         temperatura = int(ciudad.getTemperatura())
         if temperatura >= 25:
             self.nivelReal = int(self.nivel) + int(self.EC)
-        elif temperatura < 10:
+        elif temperatura <= 10:
             self.nivelReal = int(self.nivel) + int(self.EF)
         else:
             self.nivelReal = int(self.nivel)        
@@ -134,7 +145,48 @@ class Mapa:
 
     def colocarJugador(self,jugador):
         ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
-        ciudad.casillas[jugador.posX][jugador.posY] = 'X'                
+        ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto
+
+    def analizarChoqueJugador(self,jugador):
+        ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
+        casillaDestino = ciudad.casillas[jugador.posX][jugador.posY]
+        print("Casilla Destino = " + casillaDestino)
+        if casillaDestino == '.':
+            self.colocarJugador(jugador)
+        elif casillaDestino == 'A':
+            jugador.incrementarNivel()
+            self.colocarJugador(jugador)
+        elif casillaDestino == 'M':
+            jugador.matar()
+        else:
+            print("Entrando en el else")
+            encontrado = False
+            i = 0
+            jugador2 = arrayJugadores[i]
+            while not(encontrado) and i < len(arrayJugadores):
+                print("Contador = " + str(i))
+                jugador2 = arrayJugadores[i]
+                posX = jugador2.posX
+                posY = jugador2.posY
+                alias = jugador2.aliasCorto
+                print ("Jugador 2. Alias = " + str(alias) + ". Posicion: [" + str(posX) + "," + str(posY) + "]")
+                if ((jugador.posX == posX) and (jugador.posY == posY) and jugador.aliasCorto != alias):
+                    encontrado = True
+                else:
+                    i = i + 1    
+            
+            print("Salgo del while")
+            if (encontrado):
+                print("Entro en el if")
+                if(jugador.nivelReal > jugador2.nivelReal):
+                    ##Mato al jugador 2
+                    print("El jugador 1 gana")
+                elif(jugador.nivelReal < jugador2):
+                    ##Mato al jugador 1
+                    print("El jugador 2 gana")
+                else:
+                    print("Empate")    
+
 
     def __str__(self):
 
@@ -396,15 +448,25 @@ def escucharMovimientos(Broker):
      group_id='my-group',
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
+    publisher = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+    value_serializer=lambda x: 
+        dumps(x).encode('utf-8'))
+
     for message in consumer:
         message = message.value
         print('{} moved registered '.format(message))
         direccion = message['move']
+        ##quito del mapa al jugador
         mapa.borrarJugador(arrayJugadores[0])
+        ##coloco al jugador en su nueva casilla
         moverJugador(arrayJugadores[0],direccion)
-        mapa.colocarJugador(arrayJugadores[0])
+        ##compruebo si hay algo en la nueva casilla y pinto el resultado
+        mapa.analizarChoqueJugador(arrayJugadores[0])
+
         print(arrayJugadores[0])
         print(mapa)
+
+        ##coloco el mapa en el topic de mapa, para que lo lean los jugadores
     
 
 def handle_player(conn,addr,AA_Broker):
@@ -414,11 +476,12 @@ def handle_player(conn,addr,AA_Broker):
     jugador = autentificarJugador(conn)
 
     if jugador != False:
-        print(jugador)
         objetoJugador = Player(jugador['alias'], jugador['nivel'])
         arrayJugadores.append(objetoJugador)
         ciudad = mapa.getCiudad(objetoJugador.ciudadX,objetoJugador.ciudadY)
-        ciudad.setCasilla(objetoJugador.posX,objetoJugador.posY,'X')
+        ciudad.setCasilla(objetoJugador.posX,objetoJugador.posY,objetoJugador.aliasCorto)
+        for i in range(len(arrayJugadores)):
+            print(arrayJugadores[i])
         print(mapa)
 
         data = {    'msg' : 'Conectando a partida...',
@@ -486,6 +549,9 @@ def conexion_clima():
 def main():
 
     arrayJugadores.clear
+
+    print('ESPERANDO JUGADORES. PULSE 1 PARA ARRANCAR LA PARTIDA')
+
 
     ##mostrar menu de partida
 
