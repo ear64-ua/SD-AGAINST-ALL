@@ -40,12 +40,10 @@ class Player:
         self.EF = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.nivelReal = 0
-        print(self.ciudadX)
-        print(self.ciudadY)
         self.actualizarNivelReal()
 
     def __str__(self):
-        return f"alias: {self.alias}, posX: {self.posX}, posY: {self.posY}, nivel: {self.nivel}, nivelReal: {self.nivelReal}, frio: {self.EF}, calor: {self.EC}"
+        return f"alias: {self.alias}, ciudad: [{self.ciudadX}, {self.ciudadY}], posicion: [{self.posX}, {self.posY}], nivel: {self.nivel}, nivelReal: {self.nivelReal}, frio: {self.EF}, calor: {self.EC}"
 
     def getNivelReal(self):
         return self.nivelReal
@@ -63,7 +61,7 @@ class Player:
 
 class Ciudad:
     def __init__(self,nombre,temperatura,tam, num):
-        self.casillas = [ [ 0 for i in range(TAM_CIUDAD) ] for j in range(TAM_CIUDAD) ]
+        self.casillas = [ [ '.' for i in range(TAM_CIUDAD) ] for j in range(TAM_CIUDAD) ]
         self.nombre = nombre
         self.temperatura = temperatura
         self.alimentos = random.randint(MIN_ALIMENTOS,MAX_ALIMENTOS)
@@ -90,8 +88,9 @@ class Ciudad:
 
         for j in range(TAM_CIUDAD):
             r, g, b = self.rgb
-            c+=colored_background(r,g,b,' ')#str(self.casillas[i][j])
-            c+=colored_background(r,g,b,'  ')
+            c+=colored_background(r,g,b,' ')
+            c+=colored_background(r,g,b,str(self.casillas[i][j]))
+            c+=colored_background(r,g,b,' ')
 
         return c
 
@@ -105,7 +104,15 @@ class Mapa:
         self.ciudades[i][j] = ciudad
 
     def getCiudad(self,x,y):
-        return self.ciudades[x][y]    
+        return self.ciudades[x][y]
+
+    def borrarJugador(self,jugador):
+        ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
+        ciudad.casillas[jugador.posX][jugador.posY] = '.'
+
+    def colocarJugador(self,jugador):
+        ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
+        ciudad.casillas[jugador.posX][jugador.posY] = 'X'                
 
     def __str__(self):
 
@@ -285,31 +292,31 @@ def autentificarJugador(player):
 
 def moverJugador(player, direccion):
 
-    if direccion == "N":
+    if direccion == "W":
         player.posY = int(player.posY) - 1
         if player.posY < 0:
             player.posY = 9
             player.ciudadY = abs(int(player.ciudadY)- 1)
             player.actualizarNivelReal()
-    elif direccion == "S":
+    elif direccion == "E":
         player.posY = int(player.posY) + 1
         if player.posY > 9:
             player.posY = 0
             player.ciudadY = (int(player.ciudadY) + 1) % 2
             player.actualizarNivelReal()
-    elif direccion == "E":
+    elif direccion == "S":
         player.posX = int(player.posX) + 1
         if player.posX > 9:
             player.posX = 0
             player.ciudadX = (int(player.ciudadX) + 1) % 2
             player.actualizarNivelReal()
-    elif direccion == "W":
+    elif direccion == "N":
         player.posX = int(player.posX) - 1       
         if player.posX < 0:
             player.posX = 9
             player.ciudadX = abs(int(player.ciudadX)- 1)
             player.actualizarNivelReal()
-    elif direccion == "NE":
+    elif direccion == "SW":
         player.posX = int(player.posX) + 1
         player.posY = int(player.posY) - 1
         if player.posY < 0:
@@ -342,7 +349,7 @@ def moverJugador(player, direccion):
             player.posX = 0
             player.ciudadX = (int(player.ciudadX) + 1) % 2
             player.actualizarNivelReal()
-    elif direccion == "SW":
+    elif direccion == "NE":
         player.posX = int(player.posX) - 1
         player.posY = int(player.posY) + 1
         if player.posY > 9:
@@ -371,9 +378,11 @@ def escucharMovimientos(Broker):
         message = message.value
         print('{} moved registered '.format(message))
         direccion = message['move']
+        mapa.borrarJugador(arrayJugadores[0])
         moverJugador(arrayJugadores[0],direccion)
-        
+        mapa.colocarJugador(arrayJugadores[0])
         print(arrayJugadores[0])
+        print(mapa)
     
 
 def handle_player(conn,addr,AA_Broker):
@@ -386,6 +395,9 @@ def handle_player(conn,addr,AA_Broker):
         print(jugador)
         objetoJugador = Player(jugador['alias'], jugador['nivel'])
         arrayJugadores.append(objetoJugador)
+        ciudad = mapa.getCiudad(objetoJugador.ciudadX,objetoJugador.ciudadY)
+        ciudad.setCasilla(objetoJugador.posX,objetoJugador.posY,'X')
+        print(mapa)
 
         data = {    'msg' : 'Conectando a partida...',
                     'verified' : True

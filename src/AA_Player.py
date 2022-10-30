@@ -40,9 +40,9 @@ def jugarPartida(Broker):
                          dumps(x).encode('utf-8'))
 
     while True:
-        data = {'move' : input('Choose your direction (E,W,S,N): ')}
+        data = {'move' : input('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')}
         producer.send('player_move', value=data)
-        sleep(2)
+        sleep(0)
 
 
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
