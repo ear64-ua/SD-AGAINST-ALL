@@ -82,6 +82,28 @@ class Ciudad:
     def getTemperatura(self):
         return self.temperatura
 
+    def rellenarAlimentos(self):
+        comida = int(self.alimentos)
+        while(comida > 0):
+            x = int(random.randint(0,TAM_CIUDAD - 1))
+            y = int(random.randint(0,TAM_CIUDAD - 1))
+            if(self.casillas[x][y] == '.'):
+                self.casillas[x][y] = 'A'
+                comida = comida - 1
+
+    def rellenarMinas(self):   
+        minas = int(self.minas)
+        while(minas > 0):
+            x = int(random.randint(0,TAM_CIUDAD - 1))
+            y = int(random.randint(0,TAM_CIUDAD - 1))
+            if(self.casillas[x][y] == '.'):
+                self.casillas[x][y] = 'M'
+                minas = minas - 1 
+    
+    def crearCiudad(self):
+        self.rellenarAlimentos()
+        self.rellenarMinas()
+
     def str(self, i):
 
         c = ''
@@ -457,6 +479,7 @@ def conexion_clima():
         
         mapa.addCiudad(i,j,nueva_ciudad)
         num_bloque += 1
+        nueva_ciudad.crearCiudad()
 
     print(mapa)
 
