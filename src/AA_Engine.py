@@ -3,7 +3,7 @@ import random
 import socket
 import sys
 import threading
-from AA_Player import Modulo
+from classes import Modulo
 from pymongo import MongoClient   
 import pymongo
 from kafka import KafkaConsumer
@@ -159,12 +159,10 @@ class Mapa:
         elif casillaDestino == 'M':
             jugador.matar()
         else:
-            print("Entrando en el else")
             encontrado = False
             i = 0
             jugador2 = arrayJugadores[i]
             while not(encontrado) and i < len(arrayJugadores):
-                print("Contador = " + str(i))
                 jugador2 = arrayJugadores[i]
                 posX = jugador2.posX
                 posY = jugador2.posY
@@ -174,10 +172,8 @@ class Mapa:
                     encontrado = True
                 else:
                     i = i + 1    
-            
-            print("Salgo del while")
+
             if (encontrado):
-                print("Entro en el if")
                 if(jugador.nivelReal > jugador2.nivelReal):
                     ##Mato al jugador 2
                     print("El jugador 1 gana")
@@ -439,6 +435,16 @@ def moverJugador(player, direccion):
 
     return True
 
+def buscarJugador(arrayJugadores, alias):
+    i = 0
+    while i < len(arrayJugadores):
+        if arrayJugadores[i].alias == alias:
+            return arrayJugadores[i]
+        else:
+            i = i + 1
+
+    return False            
+
 def escucharMovimientos(Broker):
     consumer = KafkaConsumer(
     'player_move',
@@ -456,14 +462,16 @@ def escucharMovimientos(Broker):
         message = message.value
         print('{} moved registered '.format(message))
         direccion = message['move']
+        alias = message['alias']
+        jugador = buscarJugador(arrayJugadores, alias)
         ##quito del mapa al jugador
-        mapa.borrarJugador(arrayJugadores[0])
+        mapa.borrarJugador(jugador)
         ##coloco al jugador en su nueva casilla
-        moverJugador(arrayJugadores[0],direccion)
+        moverJugador(jugador,direccion)
         ##compruebo si hay algo en la nueva casilla y pinto el resultado
-        mapa.analizarChoqueJugador(arrayJugadores[0])
+        mapa.analizarChoqueJugador(jugador)
 
-        print(arrayJugadores[0])
+        print(jugador)
         print(mapa)
 
         ##coloco el mapa en el topic de mapa, para que lo lean los jugadores

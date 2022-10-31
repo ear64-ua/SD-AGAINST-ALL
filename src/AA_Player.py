@@ -4,34 +4,13 @@ import sys
 import json
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
+from classes import Modulo
 from time import sleep
 from json import dumps
 from json import loads
 
-class Modulo:
-    
-    def __init__(self,id):
-
-        file = open('src/json_files/addresses.json')
-        data = json.load(file)
-        file.close()
-
-        for dir in data['direcciones']:
-            if dir['Id'] == id:
-                self.ip = dir['IP']
-                self.port = int(dir['port'])
-
-    def setIp(self,ip):
-        self.ip = ip
-    
-    def setPort(self,port):
-        self.port = port
-    
-    def getIp(self):
-        return self.ip
-    
-    def getPort(self):
-        return self.port
+alias = ''
+password = ''
 
 
 def jugarPartida(Broker):
@@ -41,7 +20,8 @@ def jugarPartida(Broker):
                          dumps(x).encode('utf-8'))
 
     while True:
-        data = {'move' : input('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')}
+        data = {'alias': alias,
+        'move' : input('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')}
         producer.send('player_move', value=data)
         sleep(0)
 
@@ -55,8 +35,12 @@ def conectarPartida(Broker, AA_Engine):
     msg = engine_socket.recv(1024).decode() 
     print(msg)
 
-    login = {   'alias' : input('Alias: '),
-                'password' : input('Password: ')
+    global alias
+    alias = input('alias: ')
+    password = input('password: ')
+
+    login = {   'alias' : alias,
+                'password' : password
             }
 
     login = json.dumps(login)
@@ -78,9 +62,12 @@ def conectarPartida(Broker, AA_Engine):
 
 def insertRegistry(AA_Registry):
 
+    alias = input('alias: ')
+    password = input('password: ')
+
     # Se pedirá al usuario el alias y contraseña
-    datos = {   "alias":     input('alias: '), 
-                "password": input('password: '),
+    datos = {   "alias":    alias, 
+                "password": password,
                 "nivel":    '1',
                 "posX":     '0',
                 "posY":     '0',
@@ -121,8 +108,11 @@ def updateRegistry(AA_Registry):
 
     # contraseña antigua
     print()
-    data = {    "alias": input('alias: '),
-                "password": input('password: ')
+    alias = input('alias: ')
+    password = input('password: ')
+
+    data = {   'alias' : alias,
+                'password' : password
             }
     # convertimos los datos a json para poder enviarlos al servidor
     oldData = json.dumps(data)
