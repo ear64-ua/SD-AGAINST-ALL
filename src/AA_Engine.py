@@ -470,12 +470,21 @@ def escucharMovimientos(Broker):
         moverJugador(jugador,direccion)
         ##compruebo si hay algo en la nueva casilla y pinto el resultado
         mapa.analizarChoqueJugador(jugador)
+        ##Envio el mapa a los jugadores para que lo pinten tambien
+        enviarMapa(Broker)
 
         print(jugador)
         print(mapa)
 
         ##coloco el mapa en el topic de mapa, para que lo lean los jugadores
-    
+
+def enviarMapa(Broker):
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+                         value_serializer=lambda x: 
+                         dumps(x).encode('utf-8'))
+
+    data = {'mapa' : str(mapa)}
+    producer.send('mapa', value=data)
 
 def handle_player(conn,addr,AA_Broker):
 

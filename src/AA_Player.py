@@ -2,28 +2,61 @@ from base64 import encode
 import socket
 import sys
 import json
+import threading
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from classes import Modulo
 from time import sleep
 from json import dumps
 from json import loads
+from AA_Engine import Mapa
+from AA_Engine import Ciudad
+from threading import Thread
 
 alias = ''
 password = ''
 
+def mostrarMapa(Broker):
 
-def jugarPartida(Broker):
+    consumer = KafkaConsumer(
+    'mapa',
+     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+     auto_offset_reset='latest',
+     enable_auto_commit=True,
+     group_id='my-group',
+     value_deserializer=lambda x: loads(x.decode('utf-8')))
 
+    for message in consumer:
+        message = message.value
+
+        mapa = message['mapa']
+        print(mapa)
+
+
+def leerMovimiento(Broker):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
                          value_serializer=lambda x: 
                          dumps(x).encode('utf-8'))
 
     while True:
         data = {'alias': alias,
-        'move' : input('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')}
+                'move' : input('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')}
         producer.send('player_move', value=data)
-        sleep(0)
+        sleep(1)
+
+def jugarPartida(Broker):
+
+    ##Crear un hilo
+    print('Ejecuto hilo 1')
+    t1 = threading.Thread(target=leerMovimiento, args = [Broker])
+    ##Crear otro hilo
+    print('Ejecuto hilo 2')
+    t2 = threading.Thread(target=mostrarMapa, args = [Broker])
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+               
 
 
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
@@ -62,6 +95,7 @@ def conectarPartida(Broker, AA_Engine):
 
 def insertRegistry(AA_Registry):
 
+    global alias
     alias = input('alias: ')
     password = input('password: ')
 
@@ -108,6 +142,7 @@ def updateRegistry(AA_Registry):
 
     # contraseña antigua
     print()
+    global alias
     alias = input('alias: ')
     password = input('password: ')
 
@@ -148,15 +183,6 @@ def updateRegistry(AA_Registry):
                 
     conn.close()
 
-def mostrarMapa(Broker):
-    consumer = KafkaConsumer(
-    'mapa',
-     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='earliest',
-     enable_auto_commit=True,
-     group_id='my-group',
-     value_deserializer=lambda x: loads(x.decode('utf-8')))
-    
 
 # Muestra el menú de opciones que tiene el jugador
 def menu():
