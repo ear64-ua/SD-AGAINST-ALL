@@ -27,6 +27,7 @@ colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
 arrayJugadores = []
 maxJugadores = 2
 numJugadores = 0
+jugadoresVivos = 0
 
 
 def colored_background(r, g, b, text):
@@ -148,6 +149,7 @@ class Mapa:
         ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto
 
     def analizarChoqueJugador(self,jugador):
+        global jugadoresVivos
         ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
         casillaDestino = ciudad.casillas[jugador.posX][jugador.posY]
         print("Casilla Destino = " + casillaDestino)
@@ -158,6 +160,8 @@ class Mapa:
             self.colocarJugador(jugador)
         elif casillaDestino == 'M':
             jugador.matar()
+            ciudad.casillas[jugador.posX][jugador.posY] = '.'
+            jugadoresVivos = jugadoresVivos -1
         else:
             encontrado = False
             i = 0
@@ -168,17 +172,20 @@ class Mapa:
                 posY = jugador2.posY
                 alias = jugador2.aliasCorto
                 print ("Jugador 2. Alias = " + str(alias) + ". Posicion: [" + str(posX) + "," + str(posY) + "]")
-                if ((jugador.posX == posX) and (jugador.posY == posY) and jugador.aliasCorto != alias):
+                if ((jugador.posX == posX) and (jugador.posY == posY) and jugador.aliasCorto != alias and jugador2.nivelReal >= -10):
                     encontrado = True
                 else:
                     i = i + 1    
 
             if (encontrado):
                 if(jugador.nivelReal > jugador2.nivelReal):
-                    ##Mato al jugador 2
+                    jugador2.matar()
+                    jugadoresVivos = jugadoresVivos - 1
                     print("El jugador 1 gana")
-                elif(jugador.nivelReal < jugador2):
+                elif(jugador.nivelReal < jugador2.nivelReal):
                     ##Mato al jugador 1
+                    jugador.matar()
+                    jugadoresVivos = jugadoresVivos - 1
                     print("El jugador 2 gana")
                 else:
                     print("Empate")    
@@ -446,6 +453,9 @@ def buscarJugador(arrayJugadores, alias):
     return False            
 
 def escucharMovimientos(Broker):
+
+    global jugadoresVivos
+
     consumer = KafkaConsumer(
     'player_move',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
@@ -460,17 +470,20 @@ def escucharMovimientos(Broker):
         direccion = message['move']
         alias = message['alias']
         jugador = buscarJugador(arrayJugadores, alias)
-        ##quito del mapa al jugador
-        mapa.borrarJugador(jugador)
-        ##coloco al jugador en su nueva casilla
-        moverJugador(jugador,direccion)
-        ##compruebo si hay algo en la nueva casilla y pinto el resultado
-        mapa.analizarChoqueJugador(jugador)
-        ##Envio el mapa a los jugadores para que lo pinten tambien
-        enviarMapa(Broker)
+        if int(jugador.nivelReal) >= -10:
+            ##quito del mapa al jugador
+            mapa.borrarJugador(jugador)
+            ##coloco al jugador en su nueva casilla
+            moverJugador(jugador,direccion)
+            ##compruebo si hay algo en la nueva casilla y pinto el resultado
+            mapa.analizarChoqueJugador(jugador)
+            ##Envio el mapa a los jugadores para que lo pinten tambien
+            enviarMapa(Broker)
+            if(jugadoresVivos == 1):
+                return
 
-        print(jugador)
-        print(mapa)
+            print(jugador)
+            print(mapa)  
 
 def enviarMapa(Broker):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
@@ -479,6 +492,14 @@ def enviarMapa(Broker):
 
     data = {'mapa' : str(mapa)}
     producer.send('mapa', value=data)
+
+def enviarEstadoJugador(Broker, data):
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+                         value_serializer=lambda x: 
+                         dumps(x).encode('utf-8'))
+
+    data = {'estado' : data}
+    producer.send('estadoJugador', value=data)
 
 def handle_player(conn,addr):
 
@@ -499,7 +520,7 @@ def handle_player(conn,addr):
                 }
         data = json.dumps(data)
         conn.send(data.encode())
-        numJugadores = numJugadores + 1        
+        numJugadores = numJugadores + 1       
 
     else:
         data = {    'msg' : 'Alias o password incorrecto !',
@@ -568,6 +589,10 @@ def rellenarCiudades():
             mapa.ciudades[i][j].crearCiudad()
 
 def comenzarPartida():
+
+    global jugadoresVivos
+    jugadoresVivos = numJugadores
+
     Broker = Modulo('Broker')
     conexion_clima()
     colocarJugadores()
@@ -575,6 +600,8 @@ def comenzarPartida():
     print(mapa)
     enviarMapa(Broker)
     escucharMovimientos(Broker)
+
+    print("FIN DE LA PARTIDA")    
 
 def main():
 
