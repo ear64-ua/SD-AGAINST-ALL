@@ -25,7 +25,8 @@ colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
 
 #lista de jugadores que van a tomar parte en la partida
 arrayJugadores = []
-
+maxJugadores = 2
+numJugadores = 0
 
 
 def colored_background(r, g, b, text):
@@ -43,7 +44,6 @@ class Player:
         self.EF = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.nivelReal = 0
-        self.actualizarNivelReal()
 
     def __str__(self):
         return f"alias: {self.alias}, ciudad: [{self.ciudadX}, {self.ciudadY}], posicion: [{self.posX}, {self.posY}], nivel: {self.nivel}, nivelReal: {self.nivelReal}, frio: {self.EF}, calor: {self.EC}"
@@ -454,10 +454,6 @@ def escucharMovimientos(Broker):
      group_id='my-group',
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
-    publisher = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-    value_serializer=lambda x: 
-        dumps(x).encode('utf-8'))
-
     for message in consumer:
         message = message.value
         print('{} moved registered '.format(message))
@@ -476,8 +472,6 @@ def escucharMovimientos(Broker):
         print(jugador)
         print(mapa)
 
-        ##coloco el mapa en el topic de mapa, para que lo lean los jugadores
-
 def enviarMapa(Broker):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
                          value_serializer=lambda x: 
@@ -486,28 +480,26 @@ def enviarMapa(Broker):
     data = {'mapa' : str(mapa)}
     producer.send('mapa', value=data)
 
-def handle_player(conn,addr,AA_Broker):
+def handle_player(conn,addr):
 
     print("Connection from: " + str(addr))
 
+    global numJugadores
     jugador = autentificarJugador(conn)
 
     if jugador != False:
         objetoJugador = Player(jugador['alias'], jugador['nivel'])
         arrayJugadores.append(objetoJugador)
-        ciudad = mapa.getCiudad(objetoJugador.ciudadX,objetoJugador.ciudadY)
-        ciudad.setCasilla(objetoJugador.posX,objetoJugador.posY,objetoJugador.aliasCorto)
         for i in range(len(arrayJugadores)):
             print(arrayJugadores[i])
-        print(mapa)
 
         data = {    'msg' : 'Conectando a partida...',
-                    'verified' : True
+                    'verified' : True,
+                    'numJugador' : str(numJugadores)
                 }
         data = json.dumps(data)
         conn.send(data.encode())
-
-        escucharMovimientos(AA_Broker)
+        numJugadores = numJugadores + 1        
 
     else:
         data = {    'msg' : 'Alias o password incorrecto !',
@@ -522,20 +514,23 @@ def conexion_player():
     ## Conexión AA_Player
 
     AA_Engine = Modulo('AA_Engine')
-    Broker = Modulo('Broker')
     engine_socket = socket.socket() 
     engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
 
     engine_socket.listen()
 
-    while True:
+    while numJugadores < maxJugadores:
         conn, addr = engine_socket.accept()  
 
-        thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
-        thread.start()
+#        thread = threading.Thread(target=handle_player, args = (conn,addr))
+#        thread.start()
+
+        handle_player(conn,addr)
 
         print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
 
+    engine_socket.close()    
+    return True
 
 def conexion_clima():
     ## Conexión AA_Weather
@@ -559,25 +554,39 @@ def conexion_clima():
         
         mapa.addCiudad(i,j,nueva_ciudad)
         num_bloque += 1
-        nueva_ciudad.crearCiudad()
 
+
+def colocarJugadores():
+    for jugador in arrayJugadores:
+        ciudad = mapa.getCiudad(jugador.ciudadX,jugador.ciudadY)
+        ciudad.setCasilla(jugador.posX,jugador.posY,jugador.aliasCorto)
+        jugador.actualizarNivelReal()    
+
+def rellenarCiudades():
+    for i in range(int(NUM_CITIES/2)):
+        for j in range(int(NUM_CITIES/2)):
+            mapa.ciudades[i][j].crearCiudad()
+
+def comenzarPartida():
+    Broker = Modulo('Broker')
+    conexion_clima()
+    colocarJugadores()
+    rellenarCiudades()
     print(mapa)
+    enviarMapa(Broker)
+    escucharMovimientos(Broker)
 
 def main():
 
     arrayJugadores.clear
 
-    print('ESPERANDO JUGADORES. PULSE 1 PARA ARRANCAR LA PARTIDA')
+    print('ESPERANDO JUGADORES')
 
-
-    ##mostrar menu de partida
-
-    ##esperar conexiones de jugadores
-    ##al arrancar la partida manualmente
-    conexion_clima()
-    ##
+    ##Esperamos que los jugadores se conecten
     conexion_player()
-
+    
+    ##Creamos la partida y empezamos a jugar
+    comenzarPartida()
 
 if __name__ == "__main__":
     main()

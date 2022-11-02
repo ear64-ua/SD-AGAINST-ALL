@@ -15,15 +15,18 @@ from threading import Thread
 
 alias = ''
 password = ''
+numJugador = ''
 
 def mostrarMapa(Broker):
+
+    grupo = 'my-group_' + numJugador
 
     consumer = KafkaConsumer(
     'mapa',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
-     group_id='my-group',
+     group_id=grupo,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
     for message in consumer:
@@ -47,10 +50,8 @@ def leerMovimiento(Broker):
 def jugarPartida(Broker):
 
     ##Crear un hilo
-    print('Ejecuto hilo 1')
     t1 = threading.Thread(target=leerMovimiento, args = [Broker])
     ##Crear otro hilo
-    print('Ejecuto hilo 2')
     t2 = threading.Thread(target=mostrarMapa, args = [Broker])
     t1.start()
     t2.start()
@@ -61,6 +62,8 @@ def jugarPartida(Broker):
 
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
 def conectarPartida(Broker, AA_Engine):
+
+    global numJugador
 
     engine_socket = socket.socket()
     engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
@@ -87,6 +90,7 @@ def conectarPartida(Broker, AA_Engine):
     print()
 
     if data['verified']:
+        numJugador = data['numJugador']
         jugarPartida(Broker)
 
     engine_socket.close()
