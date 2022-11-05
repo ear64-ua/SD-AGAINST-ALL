@@ -1,7 +1,7 @@
 
 # Mapa
 
-El mapa consiste en un tablero de 20x20 que va a estar fornada por cuatro cuadrantes en las que cada una de ellas estará representando una ciudad.
+El mapa consiste en un tablero de 20x20, formado por cuatro cuadrantes de 10x10. Cada cuadrante corresponde a una ciudad distinta.
 Cada vez que un jugador cambia de ciudad, se le cambia el cuadrante en el que está posicionado
 </br></br>
 
@@ -90,6 +90,19 @@ En el método empleado para imprimir una ciudad, se le pasa como parámetro la f
 ```
 
 `TODO: implementar y documentar el método setCasillas`
+
+# Jugador
+
+La clase jugador representa a los jugadores que intervienen en la partida. Se compone de:
+
+- Alias: Identificador del jugador. Se utiliza en el login, y para identificar el receptor de los mensajes enviados a todos los jugadores
+- AliasCorto: Es la primera letra del identificador del jugador, y sirve para ubicar al jugador en el mapa.
+- CiudadX, CiudadY: Coordenadas de la ciudad en la que está el jugador
+- PosX, PosY: Coordenadas de la posición que ocupa el jugador en una determinada ciudad.
+- EF, EC: Modificadores de frío y calor, que se aplican según sea la temperatura de la ciudad en la que está el jugador.
+- Nivel: Nivel de combate del jugador. Sirve para decidir si el jugador gana o pierde, cuando se choca con otro jugador o NPC. Se incrementa cuando el jugador come un alimento, y se pone a -99 cuando el jugador muere, bien a manos de otro jugador, o bien porque ha pisado una mina.
+- NivelReal. Nivel efectivo del jugador, que resulta de aplicar el modificador de frío o calor al nivel del jugador.
+
 
 # Módulos
 
@@ -456,19 +469,23 @@ conn, addr = engine_socket.accept()
 thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
 thread.start()
 ```
-La función que se encargará de manejar dichos hilos, será `handle_player`, en donde se verificará la existencia del jugador en la base de datos, y en caso de existir, se conectará a una partida.
+La función que se encargará de manejar dichos hilos, será `handle_player`, en donde se verificará la existencia del jugador en la base de datos. En caso de existir, se registrará al jugador en la partida, incrementando el número de jugadores conectados.
 
 ```python
 def handle_player(conn,addr,AA_Broker):
 
-    if autentificarJugador(conn):
+    jugador = autentificarJugador(conn)
+
+    if jugador != False:
+        objetoJugador = Player(jugador['alias'], jugador['nivel'])
+        arrayJugadores.append(objetoJugador)
         data = {    'msg' : 'Conectando a partida...',
                     'verified' : True
+                    'numJugador' : str(numJugadores)
                 }
         data = json.dumps(data)
         conn.send(data.encode())
-
-        escucharMovimientos(AA_Broker)
+        numJugadores = numJugadores + 1 
 
     else:
         data = {    'msg' : 'Alias o password incorrecto !',
@@ -480,6 +497,15 @@ def handle_player(conn,addr,AA_Broker):
     conn.close()
 
 ```
+
+
+
+Cuando se ha alcanzado el límite de jugadores, la partida debe arrancar. Para ello, hay que generar el mapa de juego, que consiste en los siguientes pasos:
+- Generación de ciudades: Es un proceso en el que se realizan varias peticiones de información al servidor de clima. Este nos devuelve una ciudad y su temperatura asociada. Como tenemos que tener cuatro ciudades distintas, realizamos todas las peticiones que sean necesarias a este servidor, hasta tener esas ciudades no repetidas.
+- Colocación de jugadores: Colocamos a cada uno de los jugadores en una casilla aleatoria, de cualquier ciudad disponible.
+- Rellenado del mapa de ciudades: Para cada una de las ciudades, se genera un número aleatorio de alimentos y minas, y se colocan en el mapa, cuidando de no colocar ningún elemento en una casilla que ya esté ocupada.
+
+Con el mapa relleno, ya puede comenzar la partida. Mediante la tecnología de **kafka**, se depositan en las respectivas colas los mensajes con el mapa, y el inicio de la partida. A partir de aquí, la aplicación ejecutará indefinidamente el método  `escucharMovimientos()`. 
 
 Cuando un jugador se conecte a una partida, se hará uso de la tecnología de **kafka** para escuchar los movimientos recibidos del productor ( *AA_Player* ). El método `escucharMovimientos()` , estará consumiendo dichos movimientos.
 
