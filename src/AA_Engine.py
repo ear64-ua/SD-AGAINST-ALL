@@ -150,6 +150,7 @@ class Mapa:
 
     def analizarChoqueJugador(self,jugador):
         global jugadoresVivos
+        data = ''
         ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
         casillaDestino = ciudad.casillas[jugador.posX][jugador.posY]
         print("Casilla Destino = " + casillaDestino)
@@ -158,10 +159,12 @@ class Mapa:
         elif casillaDestino == 'A':
             jugador.incrementarNivel()
             self.colocarJugador(jugador)
+            data = generarMensajeEstado(jugador)
         elif casillaDestino == 'M':
             jugador.matar()
             ciudad.casillas[jugador.posX][jugador.posY] = '.'
             jugadoresVivos = jugadoresVivos -1
+            data = generarMensajeEstado(jugador)
         else:
             encontrado = False
             i = 0
@@ -171,7 +174,6 @@ class Mapa:
                 posX = jugador2.posX
                 posY = jugador2.posY
                 alias = jugador2.aliasCorto
-                print ("Jugador 2. Alias = " + str(alias) + ". Posicion: [" + str(posX) + "," + str(posY) + "]")
                 if ((jugador.posX == posX) and (jugador.posY == posY) and jugador.aliasCorto != alias and jugador2.nivelReal >= -10):
                     encontrado = True
                 else:
@@ -181,14 +183,18 @@ class Mapa:
                 if(jugador.nivelReal > jugador2.nivelReal):
                     jugador2.matar()
                     jugadoresVivos = jugadoresVivos - 1
+                    data = generarMensajeEstado(jugador2)
                     print("El jugador 1 gana")
                 elif(jugador.nivelReal < jugador2.nivelReal):
                     ##Mato al jugador 1
                     jugador.matar()
                     jugadoresVivos = jugadoresVivos - 1
                     print("El jugador 2 gana")
+                    data = generarMensajeEstado(jugador)
                 else:
-                    print("Empate")    
+                    print("Empate")
+
+        return data             
 
 
     def __str__(self):
@@ -459,10 +465,14 @@ def escucharMovimientos(Broker):
     consumer = KafkaConsumer(
     'player_move',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='earliest',
+     auto_offset_reset='latest',
      enable_auto_commit=True,
      group_id='my-group',
      value_deserializer=lambda x: loads(x.decode('utf-8')))
+
+    consumer.poll() ## dummy poll
+    ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
+    consumer.seek_to_end()
 
     for message in consumer:
         message = message.value
@@ -476,7 +486,14 @@ def escucharMovimientos(Broker):
             ##coloco al jugador en su nueva casilla
             moverJugador(jugador,direccion)
             ##compruebo si hay algo en la nueva casilla y pinto el resultado
-            mapa.analizarChoqueJugador(jugador)
+            data = mapa.analizarChoqueJugador(jugador)
+            
+            if data != '':
+                ##Envio el estado de los jugadores implicados en el movimiento
+                enviarEstadoPartida(Broker, data)
+            ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
+            if (jugadoresVivos == 1):
+                enviarMensajeBroadcast(Broker, 'finPartida')    
             ##Envio el mapa a los jugadores para que lo pinten tambien
             enviarMapa(Broker)
             if(jugadoresVivos == 1):
@@ -490,16 +507,36 @@ def enviarMapa(Broker):
                          value_serializer=lambda x: 
                          dumps(x).encode('utf-8'))
 
-    data = {'mapa' : str(mapa)}
+    if (jugadoresVivos > 1):
+        data = {'mapa' : str(mapa)}
+    else:
+        data = {'finPartida': True}
+    
     producer.send('mapa', value=data)
 
-def enviarEstadoJugador(Broker, data):
+def generarMensajeEstado(jugador):
+    data = {'alias' : jugador.alias,
+           'nivelReal' : jugador.nivelReal
+    }
+    return data    
+
+def enviarEstadoPartida(Broker, data):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
                          value_serializer=lambda x: 
                          dumps(x).encode('utf-8'))
 
-    data = {'estado' : data}
     producer.send('estadoJugador', value=data)
+
+##Los mensajes de broadcast pueden ser de inicio o de fin de partida
+def enviarMensajeBroadcast(Broker, mensaje):
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+                         value_serializer=lambda x: 
+                         dumps(x).encode('utf-8'))
+
+    data = {'alias' : 'broadcast', 
+            'estadoPartida' : mensaje}
+
+    producer.send('estadoJugador', value=data)    
 
 def handle_player(conn,addr):
 
@@ -514,7 +551,7 @@ def handle_player(conn,addr):
         for i in range(len(arrayJugadores)):
             print(arrayJugadores[i])
 
-        data = {    'msg' : 'Conectando a partida...',
+        data = {    'msg' : 'BIENVENIDO A AGAINST ALL. POR FAVOR, ESPERA A QUE SE CONECTE EL RESTO DE JUGADORES',
                     'verified' : True,
                     'numJugador' : str(numJugadores)
                 }
@@ -598,6 +635,7 @@ def comenzarPartida():
     colocarJugadores()
     rellenarCiudades()
     print(mapa)
+    enviarMensajeBroadcast(Broker, 'inicioPartida')
     enviarMapa(Broker)
     escucharMovimientos(Broker)
 
