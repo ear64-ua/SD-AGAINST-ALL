@@ -159,7 +159,7 @@ class Mapa:
         elif casillaDestino == 'A':
             jugador.incrementarNivel()
             self.colocarJugador(jugador)
-            data = generarMensajeEstado(jugador)
+##            data = generarMensajeEstado(jugador)
         elif casillaDestino == 'M':
             jugador.matar()
             ciudad.casillas[jugador.posX][jugador.posY] = '.'
