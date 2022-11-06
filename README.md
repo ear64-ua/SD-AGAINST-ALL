@@ -213,6 +213,26 @@ Definimos la funcionalidad de los topics, así como la estructura de mensajes qu
 El primer mensaje contiene el jugador al que va dirigido el mensaje, y el nivel del jugador, que siempre va a ser -99, indicándole así que debe salir del juego.  
 El segundo mensaje es de broadcast, y va dirigido a todos los jugadores. El contenido del mensaje puede ser 'inicioPartida' o 'finPartida'. La primera opción indica a los jugadores que ya está todo preparado para iniciar la partida, y pueden empezar a leer mensajes de los dos topics. La segunda opción indica que la partida ha terminado, y el único jugador que queda vivo mostrará un mensaje de victoria.
 
+# Problemas encontrados y soluciones aplicadas
+
+El primer problema que encontramos es que, cuando los jugadores tenían que leer los mensajes de los topics, cada mensaje era leído únicamente por uno de los jugadores. Al investigar, descubrimos que este fenómeno se producía porque todos los jugadores formaban parte del mismo grupo de lectura. Esto es un funcionamiento totalmente normal de kafka, pensado para facilitar la escalabilidad de las aplicaciones. El funcionamiento es que, cuando hay varias aplicaciones funcionando simultáneamente, por motivos de escalabilidad y tolerancia a fallos, solamente una de las aplicaciones del grupo leerá el mensaje. El resto no, para evitar que una misma tarea se repita varias veces. Así pues, para solucionar el problema, solamente tuvimos que asignar un grupo diferente a cada uno de los jugadores y NPCs. De esta forma, el mensaje está disponible para todas las aplicaciones.
+
+Otro problema encontrado con Kafka, corresponde a partidas que se juegan sucesivamente. El problema es que, precisamente por la configuración de grupos definida para solucionar el mensaje anterior, existe la posibilidad de que haya mensajes de partidas anteriores en el topic, que deban ser ignorados por los jugadores de una partida nueva. Existen varias formas de abordar la solución, y hemos tenido que implementar dos de ellas, porque en algunas situaciones había errores. La primera forma consiste en usar la función seek_to_end() de la librería de kafka-python, y definiendo el consumidor de la siguiente manera:
+
+```python     
+    assignments = []
+    partitions = consumer.partitions_for_topic('mapa')
+    for p in partitions:
+        assignments.append(TopicPartition('mapa', p))    
+    consumer.assign(assignments)
+    consumer.seek_to_end()
+```
+
+Con este ajuste, leemos únicamente el último mensaje del topic 'mapa', ignorando todos los demás, que no tenemos que leer por ser mapas antiguos.
+
+Esta solución no la pudimos emplear en el topic de estadoJugador, pues se comía el mensaje de broadcast de iniciar partida, así que hubo que definir algunas variables de control para ignorar todos los mensajes que no fueran el de broadcast inicial.
+
+
 ## Jugador
 
 El jugador (*AA_Player*) será el que podrá registrarse en la base de datos, actualizar sus datos o conectarse a una partida.
