@@ -1,5 +1,6 @@
+# Clases
 
-# Mapa
+## Mapa
 
 El mapa consiste en un tablero de 20x20, formado por cuatro cuadrantes de 10x10. Cada cuadrante corresponde a una ciudad distinta.
 Cada vez que un jugador cambia de ciudad, se le cambia el cuadrante en el que está posicionado
@@ -44,7 +45,7 @@ Para imprimir el mapa, primero recorremos la primera fila de ciudades ( [0][i] d
         ...
 ```
 
-# Ciudad
+## Ciudad
 
 Cada ciudad estrá formada por un tablero de 10x10 en las que se almacena:
 - Nombre
@@ -91,7 +92,7 @@ En el método empleado para imprimir una ciudad, se le pasa como parámetro la f
 
 `TODO: implementar y documentar el método setCasillas`
 
-# Jugador
+## Jugador
 
 La clase jugador representa a los jugadores que intervienen en la partida. Se compone de:
 
@@ -104,7 +105,7 @@ La clase jugador representa a los jugadores que intervienen en la partida. Se co
 - NivelReal. Nivel efectivo del jugador, que resulta de aplicar el modificador de frío o calor al nivel del jugador.
 
 
-# Módulos
+## Módulos
 
 Cada módulo representan los servidores o clientes de la partida.
 
@@ -173,6 +174,44 @@ ip = AA_Engine.getIp()
 port = AA_Engine.getPort()
 
 ```
+
+# Kafka
+
+## Estructura y mensajes
+
+Para articular la comunicación de la práctica, definimos una partición con tres topics. Los topics son:
+
+1. player_move
+2. mapa
+3. estadoJugador
+
+Definimos la funcionalidad de los topics, así como la estructura de mensajes que contienen:
+
+1. player_move: Este topic sirve para que las aplicaciones de jugador escriban el movimiento que desean hacer sobre el tablero. Las aplicaciones que pueden escribir en este topic son AA_Player y AA_NPC, y los mensajes son consumidos por AA_Engine. Sólo hay un tipo de mensaje válido, con la siguiente estructura:
+
+```
+    data = {'alias': alias del jugador,
+            'move' : dirección hacia la que se mueve el jugador (N, S, E, W, NE, NW, SN, SW )
+            }
+```
+
+2. mapa: Este topic sirve para que los jugadores puedan mostrar por pantalla el mapa de juego. Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player que haya arrancadas. En el topic puede haber dos tipos de mensajes:
+
+        data = {'mapa': mapa}
+
+        data = {'finPartida': True}
+
+ El primer mensaje contiene un string con el mapa del mundo, y se utiliza para que los jugadores puedan imprimir el mapa del mundo. El segundo mensaje contiene un booleano que avisa de que la partida ha finalizado, y sirve para poder salir de los hilos y cerrar la aplicación AA_Player correctamente.
+
+3. estadoJugador: Este topic sirve para dos cosas: comunicar que un jugador ha muerto, y coordinar el inicio y final de partida. Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber dos tipos de mensajes:
+
+        data = {'alias': alias del jugador,
+                'nivelReal': nivel del jugador}
+
+        data = {'broadcast': mensaje de broadcast}
+
+El primer mensaje contiene el jugador al que va dirigido el mensaje, y el nivel del jugador, que siempre va a ser -99, indicándole así que debe salir del juego.  
+El segundo mensaje es de broadcast, y va dirigido a todos los jugadores. El contenido del mensaje puede ser 'inicioPartida' o 'finPartida'. La primera opción indica a los jugadores que ya está todo preparado para iniciar la partida, y pueden empezar a leer mensajes de los dos topics. La segunda opción indica que la partida ha terminado, y el único jugador que queda vivo mostrará un mensaje de victoria.
 
 ## Jugador
 
