@@ -10,6 +10,7 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 from json import loads
 from json import dumps
+from time import sleep
 
 VACIO = '.'
 TAM_CIUDAD = 10
@@ -650,6 +651,7 @@ def main():
     ##Esperamos que los jugadores se conecten
     conexion_player()
     
+    sleep(3)
     ##Creamos la partida y empezamos a jugar
     comenzarPartida()
 

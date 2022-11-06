@@ -5,6 +5,7 @@ import json
 import threading
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
+from kafka import TopicPartition
 from classes import Modulo
 from time import sleep
 from json import dumps
@@ -26,7 +27,7 @@ def leerMapa(Broker):
     grupo = 'my-group_' + numJugador
 
     consumer = KafkaConsumer(
-    'mapa',
+##    'mapa',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
@@ -36,7 +37,12 @@ def leerMapa(Broker):
 
 ##    consumer.poll() ## dummy poll
     ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
-##    consumer.seek_to_end()
+    assignments = []
+    partitions = consumer.partitions_for_topic('mapa')
+    for p in partitions:
+        assignments.append(TopicPartition('mapa', p))    
+    consumer.assign(assignments)
+    consumer.seek_to_end()
 
     for message in consumer:
 ##        if(partidaIniciada):
@@ -87,7 +93,7 @@ def leerEstado(Broker):
      group_id=grupo,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
-##   consumer.poll() ## dummy poll
+##    consumer.poll() ## dummy poll
     ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
 ##    consumer.seek_to_end()
 
@@ -95,7 +101,7 @@ def leerEstado(Broker):
         message = message.value 
         print(message)
 
-        if(message['alias'] == alias):
+        if(message['alias'] == alias and partidaIniciada):
             if(message['nivelReal'] == -99):
                 print('HAS MUERTO')
                 jugadorVivo = False
@@ -104,15 +110,13 @@ def leerEstado(Broker):
                 print('LA PARTIDA HA COMENZADO')
                 partidaIniciada = True
             elif (message['estadoPartida'] == 'finPartida'):
-                if(jugadorVivo):
-                    print('ENHORABUENA. HAS GANADO LA PARTIDA. PULSE CUALQUIER TECLA PARA SALIR')
-                    jugadorVivo = False
-                    consumer.close()
-                else:
-                    print('HAS MUERTO. PULSE CUALQUIER TECLA PARA SALIR')
-                    jugadorVivo = False
-                    consumer.close()
-                    return
+                if(partidaIniciada):
+                    if(jugadorVivo):
+                        print('ENHORABUENA. HAS GANADO LA PARTIDA. PULSE CUALQUIER TECLA PARA SALIR')
+                        jugadorVivo = False
+                    else:
+                        print('HAS MUERTO. PULSE CUALQUIER TECLA PARA SALIR')
+                        jugadorVivo = False
             else:
                 print('MENSAJE BROADCAST INCORRECTO')
                 consumer.close()
