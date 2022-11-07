@@ -27,22 +27,22 @@ def leerMapa(Broker):
     grupo = 'my-group_' + numJugador
 
     consumer = KafkaConsumer(
-##    'mapa',
+    'mapa',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
-     group_id=grupo,
+##     group_id=grupo,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
 
 ##    consumer.poll() ## dummy poll
     ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
-    assignments = []
-    partitions = consumer.partitions_for_topic('mapa')
-    for p in partitions:
-        assignments.append(TopicPartition('mapa', p))    
-    consumer.assign(assignments)
-    consumer.seek_to_end()
+##    assignments = []
+##    partitions = consumer.partitions_for_topic('mapa')
+##    for p in partitions:
+##        assignments.append(TopicPartition('mapa', p))    
+##    consumer.assign(assignments)
+##    consumer.seek_to_end()
 
     for message in consumer:
 ##        if(partidaIniciada):
@@ -90,7 +90,7 @@ def leerEstado(Broker):
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
-     group_id=grupo,
+##     group_id=grupo,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
 ##    consumer.poll() ## dummy poll

@@ -26,8 +26,10 @@ colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
 
 #lista de jugadores que van a tomar parte en la partida
 arrayJugadores = []
+arrayNPCs = []
 maxJugadores = 2
 numJugadores = 0
+numNPCs = 0
 jugadoresVivos = 0
 
 
@@ -35,7 +37,7 @@ def colored_background(r, g, b, text):
     return f'\033[48;2;{r};{g};{b}m{text}\033[0m'
 
 class Player:
-    def __init__(self,alias,nivel):
+    def __init__(self,alias,nivel,tipo):
         self.alias = alias
         self.aliasCorto = alias[0].upper()
         self.ciudadX = random.randint(0,(NUM_CITIES/2)-1)
@@ -45,10 +47,11 @@ class Player:
         self.nivel = nivel
         self.EF = random.randint(MIN_CLIMA,MAX_CLIMA)
         self.EC = random.randint(MIN_CLIMA,MAX_CLIMA)
-        self.nivelReal = 0
+        self.nivelReal = nivel
+        self.tipo = tipo
 
     def __str__(self):
-        return f"alias: {self.alias}, ciudad: [{self.ciudadX}, {self.ciudadY}], posicion: [{self.posX}, {self.posY}], nivel: {self.nivel}, nivelReal: {self.nivelReal}, frio: {self.EF}, calor: {self.EC}"
+        return f"alias: {self.alias}, tipo: {self.tipo}, ciudad: [{self.ciudadX}, {self.ciudadY}], posicion: [{self.posX}, {self.posY}], nivel: {self.nivel}, nivelReal: {self.nivelReal}, frio: {self.EF}, calor: {self.EC}"
 
     def getNivelReal(self):
         return self.nivelReal
@@ -158,14 +161,20 @@ class Mapa:
         if casillaDestino == '.':
             self.colocarJugador(jugador)
         elif casillaDestino == 'A':
-            jugador.incrementarNivel()
+            if (jugador.tipo == 'PC'):
+                jugador.incrementarNivel()
             self.colocarJugador(jugador)
 ##            data = generarMensajeEstado(jugador)
         elif casillaDestino == 'M':
-            jugador.matar()
-            ciudad.casillas[jugador.posX][jugador.posY] = '.'
-            jugadoresVivos = jugadoresVivos -1
-            data = generarMensajeEstado(jugador)
+            if (jugador.tipo == 'PC'):
+                jugador.matar()
+                jugadoresVivos = jugadoresVivos -1
+                data = generarMensajeEstado(jugador)
+                ciudad.casillas[jugador.posX][jugador.posY] = '.'    
+            else:
+                self.colocarJugador(jugador)            
+        elif casillaDestino.isnumeric():
+            encontrado = False      
         else:
             encontrado = False
             i = 0
@@ -381,79 +390,67 @@ def moverJugador(player, direccion):
         if player.posY < 0:
             player.posY = 9
             player.ciudadY = abs(int(player.ciudadY)- 1)
-            player.actualizarNivelReal()
     elif direccion == "E":
         player.posY = int(player.posY) + 1
         if player.posY > 9:
             player.posY = 0
             player.ciudadY = (int(player.ciudadY) + 1) % 2
-            player.actualizarNivelReal()
     elif direccion == "S":
         player.posX = int(player.posX) + 1
         if player.posX > 9:
             player.posX = 0
             player.ciudadX = (int(player.ciudadX) + 1) % 2
-            player.actualizarNivelReal()
     elif direccion == "N":
         player.posX = int(player.posX) - 1       
         if player.posX < 0:
             player.posX = 9
             player.ciudadX = abs(int(player.ciudadX)- 1)
-            player.actualizarNivelReal()
     elif direccion == "SW":
         player.posX = int(player.posX) + 1
         player.posY = int(player.posY) - 1
         if player.posY < 0:
             player.posY = 9
             player.ciudadY = abs(int(player.ciudadY) - 1)
-            player.actualizarNivelReal()
         if player.posX > 9:
             player.posX = 0
             player.ciudadX = (int(player.ciudadX) + 1) % 2   
-            player.actualizarNivelReal() 
     elif direccion == "NW":
         player.posX = int(player.posX) - 1
         player.posY = int(player.posY) - 1
         if player.posY < 0:
             player.posY = 9
             player.ciudadY = abs(int(player.ciudadY) - 1)
-            player.actualizarNivelReal()
         if player.posX < 0:
             player.posX = 9
-            player.ciudadX = abs(int(player.ciudadX)- 1) 
-            player.actualizarNivelReal()  
+            player.ciudadX = abs(int(player.ciudadX)- 1)  
     elif direccion == "SE":
         player.posX = int(player.posX) + 1
         player.posY = int(player.posY) + 1
         if player.posY > 9:
             player.posY = 0
             player.ciudadY = (int(player.ciudadY) + 1) % 2
-            player.actualizarNivelReal()
         if player.posX > 9:
             player.posX = 0
             player.ciudadX = (int(player.ciudadX) + 1) % 2
-            player.actualizarNivelReal()
     elif direccion == "NE":
         player.posX = int(player.posX) - 1
         player.posY = int(player.posY) + 1
         if player.posY > 9:
             player.posY = 0
-            player.ciudadY = (int(player.ciudadY) + 1) % 2  
-            player.actualizarNivelReal()      
+            player.ciudadY = (int(player.ciudadY) + 1) % 2       
         if player.posX < 0:
             player.posX = 9
-            player.ciudadX = abs(int(player.ciudadX)- 1)
-            player.actualizarNivelReal()        
+            player.ciudadX = abs(int(player.ciudadX)- 1)        
     else:
         return False
 
     return True
 
-def buscarJugador(arrayJugadores, alias):
+def buscarJugador(array, alias):
     i = 0
-    while i < len(arrayJugadores):
-        if arrayJugadores[i].alias == alias:
-            return arrayJugadores[i]
+    while i < len(array):
+        if array[i].alias == alias:
+            return array[i]
         else:
             i = i + 1
 
@@ -481,27 +478,52 @@ def escucharMovimientos(Broker):
         direccion = message['move']
         alias = message['alias']
         jugador = buscarJugador(arrayJugadores, alias)
-        if int(jugador.nivelReal) >= -10:
-            ##quito del mapa al jugador
-            mapa.borrarJugador(jugador)
-            ##coloco al jugador en su nueva casilla
+        if jugador != False:
+            if int(jugador.nivelReal) >= -10: ##Caso se mueve un jugador vivo. Si esta muerto, se ignora
+                ##quito del mapa al jugador
+                mapa.borrarJugador(jugador)
+                ##coloco al jugador en su nueva casilla
+                moverJugador(jugador,direccion)
+                jugador.actualizarNivelReal()
+                ##compruebo si hay algo en la nueva casilla y pinto el resultado
+                data = mapa.analizarChoqueJugador(jugador)
+                
+                if data != '':
+                    ##Envio el estado de los jugadores implicados en el movimiento
+                    enviarEstadoPartida(Broker, data)
+                ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
+                if (jugadoresVivos == 1):
+                    enviarMensajeBroadcast(Broker, 'finPartida')    
+                ##Envio el mapa a los jugadores para que lo pinten tambien
+                enviarMapa(Broker)
+                if(jugadoresVivos == 1):
+                    return
+
+                print(jugador)
+                print(mapa)
+        else: ##caso se mueve un NPC  
+            jugador = buscarJugador(arrayNPCs, alias)
+            if (jugador == False): ##El jugador no está presente en el array
+                ##Creo un nuevo jugador NPC y lo meto en el array de NPCs
+                jugador = Player(alias, int(alias[0]), 'NPC')
+                arrayNPCs.append(jugador)
+            mapa.borrarJugador(jugador)    
             moverJugador(jugador,direccion)
-            ##compruebo si hay algo en la nueva casilla y pinto el resultado
             data = mapa.analizarChoqueJugador(jugador)
-            
             if data != '':
                 ##Envio el estado de los jugadores implicados en el movimiento
                 enviarEstadoPartida(Broker, data)
-            ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
-            if (jugadoresVivos == 1):
-                enviarMensajeBroadcast(Broker, 'finPartida')    
-            ##Envio el mapa a los jugadores para que lo pinten tambien
+                ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
+                if (jugadoresVivos == 1):
+                    enviarMensajeBroadcast(Broker, 'finPartida')    
+                ##Envio el mapa a los jugadores para que lo pinten tambien
             enviarMapa(Broker)
             if(jugadoresVivos == 1):
                 return
 
             print(jugador)
-            print(mapa)  
+            print(mapa)
+
 
 def enviarMapa(Broker):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
@@ -547,7 +569,7 @@ def handle_player(conn,addr):
     jugador = autentificarJugador(conn)
 
     if jugador != False:
-        objetoJugador = Player(jugador['alias'], jugador['nivel'])
+        objetoJugador = Player(jugador['alias'], jugador['nivel'], 'PC')
         arrayJugadores.append(objetoJugador)
         for i in range(len(arrayJugadores)):
             print(arrayJugadores[i])
@@ -645,6 +667,7 @@ def comenzarPartida():
 def main():
 
     arrayJugadores.clear
+    arrayNPCs.clear
 
     print('ESPERANDO JUGADORES')
 
