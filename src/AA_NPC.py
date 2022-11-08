@@ -46,6 +46,9 @@ def leerMapa(Broker):
                 print('MENSAJE ERRONEO')
                 consumer.close()
                 return
+        else:
+            consumer.close()
+            return        
 
 def insertarMovimiento(Broker):
     global jugadorVivo
@@ -94,7 +97,7 @@ def leerEstado(Broker):
             elif (message['estadoPartida'] == 'finPartida'):
                 if(partidaIniciada):
                     print('FIN DE LA PARTIDA')
-                    
+                    jugadorVivo = False
             else:
                 print('MENSAJE BROADCAST INCORRECTO')
                 consumer.close()

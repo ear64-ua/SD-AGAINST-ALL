@@ -604,14 +604,15 @@ def conexion_player():
     engine_socket.listen()
 
     while numJugadores < maxJugadores:
-        conn, addr = engine_socket.accept()  
+        if (threading.active_count() - 1 < maxJugadores - numJugadores):
+            conn, addr = engine_socket.accept()  
 
-#        thread = threading.Thread(target=handle_player, args = (conn,addr))
-#        thread.start()
+            thread = threading.Thread(target=handle_player, args = (conn,addr))
+            thread.start()
 
-        handle_player(conn,addr)
+    #        handle_player(conn,addr)
 
-        print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
+            print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
     engine_socket.close()    
     return True

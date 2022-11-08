@@ -144,9 +144,11 @@ def jugarPartida(Broker):
 
 
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
-def conectarPartida(Broker, AA_Engine):
+def conectarPartida(AA_Engine):
 
     global numJugador
+
+    conectado = False
 
     engine_socket = socket.socket()
     engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
@@ -173,12 +175,11 @@ def conectarPartida(Broker, AA_Engine):
     print()
 
     if data['verified']:
-        numJugador = data['numJugador']
-        jugarPartida(Broker)
+        numJugador = data['numJugador']    
+        conectado = True
 
     engine_socket.close()
-
-    return
+    return conectado
 
 def insertRegistry(AA_Registry):
 
@@ -297,7 +298,8 @@ def main():
         elif opcion == '2': # Editamos la contraseña del usuario
             updateRegistry(AA_Registry)
         elif opcion == '3': # Conexión a partida
-            conectarPartida(Broker,AA_Engine)
+            if conectarPartida(AA_Engine):
+                jugarPartida(Broker)
         else:
             break
 
