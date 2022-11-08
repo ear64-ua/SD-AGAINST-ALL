@@ -32,7 +32,7 @@ def leerMapa(Broker):
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
     for message in consumer:
-##        if(partidaIniciada):
+        if(jugadorVivo):
             message = message.value
 
             if('mapa' in message):

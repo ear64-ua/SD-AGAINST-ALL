@@ -27,7 +27,7 @@ colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
 #lista de jugadores que van a tomar parte en la partida
 arrayJugadores = []
 arrayNPCs = []
-maxJugadores = 2
+maxJugadores = 3
 numJugadores = 0
 numNPCs = 0
 jugadoresVivos = 0
@@ -173,14 +173,16 @@ class Mapa:
                 ciudad.casillas[jugador.posX][jugador.posY] = '.'    
             else:
                 self.colocarJugador(jugador)            
-        elif casillaDestino.isnumeric():
-            encontrado = False      
         else:
+            if casillaDestino.isnumeric():
+                array = arrayNPCs
+            else:
+                array = arrayJugadores        
             encontrado = False
             i = 0
-            jugador2 = arrayJugadores[i]
-            while not(encontrado) and i < len(arrayJugadores):
-                jugador2 = arrayJugadores[i]
+            jugador2 = array[i]
+            while not(encontrado) and i < len(array):
+                jugador2 = array[i]
                 posX = jugador2.posX
                 posY = jugador2.posY
                 alias = jugador2.aliasCorto
@@ -195,6 +197,7 @@ class Mapa:
                     jugadoresVivos = jugadoresVivos - 1
                     data = generarMensajeEstado(jugador2)
                     print("El jugador 1 gana")
+                    ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto 
                 elif(jugador.nivelReal < jugador2.nivelReal):
                     ##Mato al jugador 1
                     jugador.matar()

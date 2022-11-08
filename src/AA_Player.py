@@ -45,7 +45,7 @@ def leerMapa(Broker):
 ##    consumer.seek_to_end()
 
     for message in consumer:
-##        if(partidaIniciada):
+        if(jugadorVivo):
             message = message.value
 
             if('mapa' in message):
@@ -60,6 +60,10 @@ def leerMapa(Broker):
                 print('MENSAJE ERRONEO')
                 consumer.close()
                 return
+        else:
+            consumer.close()
+            return
+                
 
 def insertarMovimiento(Broker):
     global jugadorVivo
@@ -103,7 +107,7 @@ def leerEstado(Broker):
 
         if(message['alias'] == alias and partidaIniciada):
             if(message['nivelReal'] == -99):
-                print('HAS MUERTO')
+                print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
                 jugadorVivo = False
         if (message['alias'] == 'broadcast'):
             if (message['estadoPartida'] == 'inicioPartida'):
@@ -112,10 +116,10 @@ def leerEstado(Broker):
             elif (message['estadoPartida'] == 'finPartida'):
                 if(partidaIniciada):
                     if(jugadorVivo):
-                        print('ENHORABUENA. HAS GANADO LA PARTIDA. PULSE CUALQUIER TECLA PARA SALIR')
+                        print('ENHORABUENA. HAS GANADO LA PARTIDA. PULSA LA TECLA INTRO PARA SALIR')
                         jugadorVivo = False
                     else:
-                        print('HAS MUERTO. PULSE CUALQUIER TECLA PARA SALIR')
+                        print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
                         jugadorVivo = False
             else:
                 print('MENSAJE BROADCAST INCORRECTO')
