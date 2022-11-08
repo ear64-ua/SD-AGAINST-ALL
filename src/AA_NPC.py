@@ -109,7 +109,8 @@ def jugarPartida(Broker):
     global alias
 
     nivel = random.randint(1,9)
-    alias = str(nivel) + 'NPC'
+    seed = random.randint(0,999999999)
+    alias = str(nivel) + 'NPC_' + str(seed)
 
     t1 = Thread(target=insertarMovimiento, args = [Broker])
     t2 = Thread(target=leerMapa, args = [Broker])
