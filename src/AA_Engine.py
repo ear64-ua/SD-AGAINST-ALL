@@ -194,14 +194,16 @@ class Mapa:
             if (encontrado):
                 if(jugador.nivelReal > jugador2.nivelReal):
                     jugador2.matar()
-                    jugadoresVivos = jugadoresVivos - 1
+                    if jugador2.tipo == 'PC':
+                        jugadoresVivos = jugadoresVivos - 1
                     data = generarMensajeEstado(jugador2)
                     print("El jugador 1 gana")
                     ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto 
                 elif(jugador.nivelReal < jugador2.nivelReal):
                     ##Mato al jugador 1
                     jugador.matar()
-                    jugadoresVivos = jugadoresVivos - 1
+                    if jugador.tipo == 'PC':
+                        jugadoresVivos = jugadoresVivos - 1
                     print("El jugador 2 gana")
                     data = generarMensajeEstado(jugador)
                 else:
