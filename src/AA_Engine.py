@@ -478,10 +478,16 @@ def escucharMovimientos(Broker):
     consumer.seek_to_end()
 
     for message in consumer:
+        finTiempo = False
         message = message.value
         print('{} moved registered '.format(message))
-        direccion = message['move']
-        alias = message['alias']
+        try:
+            direccion = message['move']
+            alias = message['alias']
+        except:
+            finTiempo = message['finTiempo']
+        if finTiempo:
+            return
         jugador = buscarJugador(arrayJugadores, alias)
         if jugador != False:
             if int(jugador.nivelReal) >= -10: ##Caso se mueve un jugador vivo. Si esta muerto, se ignora
@@ -495,12 +501,12 @@ def escucharMovimientos(Broker):
                 
                 if data != '':
                     ##Envio el estado de los jugadores implicados en el movimiento
-                    enviarEstadoPartida(Broker, data)
+                    enviarMensaje(Broker, 'estadoJugador', data)
                 ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
                 if (jugadoresVivos == 1):
-                    enviarMensajeBroadcast(Broker, 'finPartida')    
+                    enviarMensaje(Broker,'broadcast', 'finPartida')    
                 ##Envio el mapa a los jugadores para que lo pinten tambien
-                enviarMapa(Broker)
+                enviarMensaje(Broker, 'mapa', None)
                 if(jugadoresVivos == 1):
                     return
 
@@ -517,12 +523,12 @@ def escucharMovimientos(Broker):
             data = mapa.analizarChoqueJugador(jugador)
             if data != '':
                 ##Envio el estado de los jugadores implicados en el movimiento
-                enviarEstadoPartida(Broker, data)
+                enviarMensaje(Broker,'estadoJugador', data)
                 ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
                 if (jugadoresVivos == 1):
-                    enviarMensajeBroadcast(Broker, 'finPartida')    
+                    enviarMensaje(Broker, 'broadcast', 'finPartida')    
                 ##Envio el mapa a los jugadores para que lo pinten tambien
-            enviarMapa(Broker)
+            enviarMensaje(Broker, 'mapa', None)
             if(jugadoresVivos == 1):
                 return
 
@@ -530,41 +536,57 @@ def escucharMovimientos(Broker):
             print(mapa)
 
 
-def enviarMapa(Broker):
-    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-                         value_serializer=lambda x: 
-                         dumps(x).encode('utf-8'))
-
-    if (jugadoresVivos > 1):
-        data = {'mapa' : str(mapa)}
-    else:
-        data = {'finPartida': True}
-    
-    producer.send('mapa', value=data)
-
 def generarMensajeEstado(jugador):
     data = {'alias' : jugador.alias,
            'nivelReal' : jugador.nivelReal
     }
     return data    
 
-def enviarEstadoPartida(Broker, data):
+def enviarMensaje(Broker, tipoMensaje, valorMensaje):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
                          value_serializer=lambda x: 
                          dumps(x).encode('utf-8'))
 
-    producer.send('estadoJugador', value=data)
+    cola = ''
+    data = ''
 
-##Los mensajes de broadcast pueden ser de inicio o de fin de partida
-def enviarMensajeBroadcast(Broker, mensaje):
-    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-                         value_serializer=lambda x: 
-                         dumps(x).encode('utf-8'))
+    if tipoMensaje == 'broadcast':
+        cola = 'estadoJugador'
+        data = {'alias' : 'broadcast', 
+            'estadoPartida' : valorMensaje}
+    elif tipoMensaje == 'estadoJugador':
+        cola = 'estadoJugador'
+        data = valorMensaje        
+    elif tipoMensaje == 'mapa':
+        cola = 'mapa'
+        if (jugadoresVivos > 1):
+            data = {'mapa' : str(mapa)}
+        else:
+            data = {'finPartida': True}
+    elif tipoMensaje == 'player_move':
+        cola = 'player_move'
+        data = {'finTiempo' : True}
+    else:
+        print('ERROR EN FUNCION ENVIARMENSAJE')
 
-    data = {'alias' : 'broadcast', 
-            'estadoPartida' : mensaje}
+    if cola != '':   
+        producer.send(cola, value=data)
 
-    producer.send('estadoJugador', value=data)    
+def finalizarPartidaPorTiempo(Broker):
+    
+    tiempo = 0
+
+    while tiempo < 300:
+        sleep(1)
+        tiempo = tiempo + 1
+        if jugadoresVivos == 1:
+            return
+
+    enviarMensaje(Broker,'broadcast', 'finTiempo')
+    enviarMensaje(Broker, 'mapa', 'finTiempo')
+    enviarMensaje(Broker, 'player_move', 'finTiempo')
+
+    return 
 
 def handle_player(conn,addr):
 
@@ -642,7 +664,6 @@ def conexion_clima():
         mapa.addCiudad(i,j,nueva_ciudad)
         num_bloque += 1
 
-
 def colocarJugadores():
     for jugador in arrayJugadores:
         ciudad = mapa.getCiudad(jugador.ciudadX,jugador.ciudadY)
@@ -664,9 +685,14 @@ def comenzarPartida():
     colocarJugadores()
     rellenarCiudades()
     print(mapa)
-    enviarMensajeBroadcast(Broker, 'inicioPartida')
-    enviarMapa(Broker)
-    escucharMovimientos(Broker)
+    enviarMensaje(Broker,'broadcast', 'inicioPartida')
+    enviarMensaje(Broker, 'mapa', None)
+    t1 = threading.Thread(target=escucharMovimientos, args = [Broker])
+    t2 = threading.Thread(target=finalizarPartidaPorTiempo, args = [Broker])
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
 
     print("FIN DE LA PARTIDA")    
 

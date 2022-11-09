@@ -98,6 +98,9 @@ def leerEstado(Broker):
                 if(partidaIniciada):
                     print('FIN DE LA PARTIDA')
                     jugadorVivo = False
+            elif (message['estadoPartida'] == 'finTiempo'):        
+                print('TIEMPO DE PARTIDA FINALIZADO. PULSA LA TECLA INTRO PARA SALIR')
+                jugadorVivo = False        
             else:
                 print('MENSAJE BROADCAST INCORRECTO')
                 consumer.close()
