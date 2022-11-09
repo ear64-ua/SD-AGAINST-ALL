@@ -597,18 +597,25 @@ def handle_player(conn,addr):
 
     if jugador != False:
         objetoJugador = Player(jugador['alias'], jugador['nivel'], 'PC')
-        arrayJugadores.append(objetoJugador)
-        for i in range(len(arrayJugadores)):
-            print(arrayJugadores[i])
-
-        data = {    'msg' : 'BIENVENIDO A AGAINST ALL. POR FAVOR, ESPERA A QUE SE CONECTE EL RESTO DE JUGADORES',
-                    'verified' : True,
-                    'numJugador' : str(numJugadores)
+        if(buscarJugador(arrayJugadores,jugador['alias'])):
+            data = {    'msg' : 'El jugador ya está registrado en la partida',
+                        'verified' : False
                 }
-        data = json.dumps(data)
-        conn.send(data.encode())
-        numJugadores = numJugadores + 1       
+            data = json.dumps(data)
+            conn.send(data.encode())
+        else:
+            arrayJugadores.append(objetoJugador)
+            for i in range(len(arrayJugadores)):
+                print(arrayJugadores[i])
 
+            data = {    'msg' : 'BIENVENIDO A AGAINST ALL. POR FAVOR, ESPERA A QUE SE CONECTE EL RESTO DE JUGADORES',
+                        'verified' : True,
+                        'numJugador' : str(numJugadores)
+                    }
+            data = json.dumps(data)
+            conn.send(data.encode())
+            numJugadores = numJugadores + 1        
+           
     else:
         data = {    'msg' : 'Alias o password incorrecto !',
                     'verified' : False
