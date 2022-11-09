@@ -31,6 +31,7 @@ maxJugadores = 3
 numJugadores = 0
 numNPCs = 0
 jugadoresVivos = 0
+tiempoPartida = 300
 
 
 def colored_background(r, g, b, text):
@@ -576,7 +577,7 @@ def finalizarPartidaPorTiempo(Broker):
     
     tiempo = 0
 
-    while tiempo < 300:
+    while tiempo < tiempoPartida:
         sleep(1)
         tiempo = tiempo + 1
         if jugadoresVivos == 1:
@@ -703,10 +704,23 @@ def comenzarPartida():
 
     print("FIN DE LA PARTIDA")    
 
+def loadConfFile():
+    
+    global maxJugadores, tiempoPartida
+    
+    file = open('src/json_files/conf.json')
+    data = json.load(file)
+    file.close()
+
+    maxJugadores = data['maxJugadores']
+    tiempoPartida = data['tiempoPartida']
+
 def main():
 
     arrayJugadores.clear
     arrayNPCs.clear
+
+    loadConfFile()
 
     print('ESPERANDO JUGADORES')
 
