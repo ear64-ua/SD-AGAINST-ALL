@@ -11,6 +11,7 @@ from kafka import KafkaProducer
 from json import loads
 from json import dumps
 from time import sleep
+from types import SimpleNamespace
 
 VACIO = '.'
 TAM_CIUDAD = 10
@@ -137,7 +138,7 @@ class Mapa:
 
     def __init__(self):
         self.ciudades = [ [ 0 for i in range(NUM_CITIES//2) ] for j in range(NUM_CITIES//2) ]
-        self.casillas= [[0 for i in range(TAM_CIUDAD*2)] for j in range(TAM_CIUDAD*2)]
+#        self.casillas= [[0 for i in range(TAM_CIUDAD*2)] for j in range(TAM_CIUDAD*2)]
         
     def addCiudad(self,i,j,ciudad):
         self.ciudades[i][j] = ciudad
@@ -683,6 +684,88 @@ def rellenarCiudades():
         for j in range(int(NUM_CITIES/2)):
             mapa.ciudades[i][j].crearCiudad()
 
+def cargarCiudad(objeto, coordenada):
+    ciudad = json.loads(objeto[coordenada], object_hook=lambda d: SimpleNamespace(**d))
+    nuevaCiudad = Ciudad(ciudad.nombre,ciudad.temperatura,ciudad.tam,1)
+    nuevaCiudad.alimentos = ciudad.alimentos
+    nuevaCiudad.minas = ciudad.minas
+    nuevaCiudad.rgb = ciudad.rgb
+    nuevaCiudad.casillas = ciudad.casillas
+
+    return nuevaCiudad
+
+def cargarPartida():
+    try:
+        conn = MongoClient()
+        print("Connected to MongoDB successfully!!!")
+    except:  
+        print("Could not connect to MongoDB")
+        return False
+
+    db = conn.gameDB
+
+    try:
+        db.validate_collection('partida')
+    except pymongo.errors.OperationFailure:
+        print("No existe una partida guardada. Se procede a crear una partida nueva")
+        return False
+
+    collection = db.partida
+    partida = collection.find()
+    objeto= partida[0]
+    nuevaCiudad = cargarCiudad(objeto, 'c1')
+    mapa.ciudades[0][0] = nuevaCiudad
+    nuevaCiudad = cargarCiudad(objeto, 'c2')
+    mapa.ciudades[0][1] = nuevaCiudad
+    nuevaCiudad = cargarCiudad(objeto, 'c3')
+    mapa.ciudades[1][0] = nuevaCiudad
+    nuevaCiudad = cargarCiudad(objeto, 'c4')
+    mapa.ciudades[1][1] = nuevaCiudad
+
+    print(objeto['jugadores'])
+    lista = json.loads(objeto['jugadores'])
+    print(lista)
+    print(len(lista))
+
+    for jugador in lista:
+        print(jugador['alias'])
+    return True             
+
+def guardarPartida():
+    try:
+        conn = MongoClient()
+        print("Connected to MongoDB successfully!!!")
+    except:  
+        print("Could not connect to MongoDB")
+        return False
+
+    db = conn.gameDB
+    collection = db.partida
+    jugadores = json.dumps([jugador.__dict__ for jugador in arrayJugadores])
+    data = {
+                'c1' : json.dumps(mapa.ciudades[0][0].__dict__),
+                'c2' : json.dumps(mapa.ciudades[0][1].__dict__),
+                'c3' : json.dumps(mapa.ciudades[1][0].__dict__),  
+                'c4' : json.dumps(mapa.ciudades[1][1].__dict__),
+                'jugadores' : jugadores           
+           }
+    collection.insert_one(data)
+
+def borrarPartida():
+    try:
+        conn = MongoClient()
+        print("Connected to MongoDB successfully!!!")
+    except:  
+        print("Could not connect to MongoDB")
+        return False
+
+    db = conn.gameDB
+
+    try:
+        db.validate_collection('mapa')
+    except pymongo.errors.OperationFailure:
+        print("No existe una partida ")                  
+
 def comenzarPartida():
 
     global jugadoresVivos
@@ -693,6 +776,7 @@ def comenzarPartida():
     colocarJugadores()
     rellenarCiudades()
     print(mapa)
+    guardarPartida()
     enviarMensaje(Broker,'broadcast', 'inicioPartida')
     enviarMensaje(Broker, 'mapa', None)
     t1 = threading.Thread(target=escucharMovimientos, args = [Broker])
@@ -722,14 +806,15 @@ def main():
 
     loadConfFile()
 
-    print('ESPERANDO JUGADORES')
+    if(cargarPartida() == False):
 
-    ##Esperamos que los jugadores se conecten
-    conexion_player()
+        ##Esperamos que los jugadores se conecten
+        print('ESPERANDO JUGADORES')
+        conexion_player()
     
     sleep(3)
     ##Creamos la partida y empezamos a jugar
-    comenzarPartida()
+#    comenzarPartida()
 
 if __name__ == "__main__":
     main()
