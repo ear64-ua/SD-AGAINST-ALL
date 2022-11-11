@@ -33,6 +33,7 @@ numJugadores = 0
 numNPCs = 0
 jugadoresVivos = 0
 tiempoPartida = 300
+codigoPartida = 0
 
 
 def colored_background(r, g, b, text):
@@ -543,7 +544,8 @@ def escucharMovimientos(Broker):
 
 def generarMensajeEstado(jugador):
     data = {'alias' : jugador.alias,
-           'nivelReal' : jugador.nivelReal
+           'nivelReal' : jugador.nivelReal,
+           'codigoPartida' : codigoPartida
     }
     return data    
 
@@ -558,19 +560,23 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
     if tipoMensaje == 'broadcast':
         cola = 'estadoJugador'
         data = {'alias' : 'broadcast', 
-            'estadoPartida' : valorMensaje}
+                'estadoPartida' : valorMensaje,
+                'codigoPartida' : codigoPartida}
     elif tipoMensaje == 'estadoJugador':
         cola = 'estadoJugador'
         data = valorMensaje        
     elif tipoMensaje == 'mapa':
         cola = 'mapa'
         if (jugadoresVivos > 1):
-            data = {'mapa' : str(mapa)}
+            data = {'mapa' : str(mapa),
+                    'codigoPartida' : codigoPartida}
         else:
-            data = {'finPartida': True}
+            data = {'finPartida': True,
+                    'codigoPartida' : codigoPartida}
     elif tipoMensaje == 'player_move':
         cola = 'player_move'
-        data = {'finTiempo' : True}
+        data = {'finTiempo' : True,
+                'codigoPartida' : codigoPartida}
     else:
         print('ERROR EN FUNCION ENVIARMENSAJE')
 
@@ -615,7 +621,7 @@ def handle_player(conn,addr):
 
             data = {    'msg' : 'BIENVENIDO A AGAINST ALL. POR FAVOR, ESPERA A QUE SE CONECTE EL RESTO DE JUGADORES',
                         'verified' : True,
-                        'numJugador' : str(numJugadores)
+                        'codigoPartida' : codigoPartida
                     }
             data = json.dumps(data)
             conn.send(data.encode())
@@ -711,11 +717,10 @@ def cargarJugador(player):
 
 def cargarPartida():
 
-    global jugadoresVivos
+    global jugadoresVivos, codigoPartida
     
     try:
         conn = MongoClient()
-        print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
         return False
@@ -747,7 +752,8 @@ def cargarPartida():
         jugador = cargarJugador(player)
         arrayJugadores.append(jugador)
 
-    jugadoresVivos = objeto['jugadoresVivos']    
+    jugadoresVivos = objeto['jugadoresVivos']
+    codigoPartida = objeto['codigoPartida']    
 
     conn.close()
     return True             
@@ -755,7 +761,6 @@ def cargarPartida():
 def guardarPartida():
     try:
         conn = MongoClient()
-        print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
         return False
@@ -769,7 +774,8 @@ def guardarPartida():
                 'c3' : json.dumps(mapa.ciudades[1][0].__dict__),  
                 'c4' : json.dumps(mapa.ciudades[1][1].__dict__),
                 'jugadores' : jugadores,
-                'jugadoresVivos' : jugadoresVivos
+                'jugadoresVivos' : jugadoresVivos,
+                'codigoPartida' : codigoPartida
            }
     collection.insert_one(data)
     conn.close()
@@ -791,6 +797,9 @@ def borrarPartidaGuardada():
 
     db.partida.drop()
     conn.close()
+
+def crearCodigoPartida():
+    return random.randint(1,999999999999)    
 
 def generarPartida():
     global jugadoresVivos
@@ -833,6 +842,8 @@ def loadConfFile():
 
 def main():
 
+    global codigoPartida
+
     arrayJugadores.clear
     arrayNPCs.clear
 
@@ -842,6 +853,7 @@ def main():
 
         ##Esperamos que los jugadores se conecten
         print('ESPERANDO JUGADORES')
+        codigoPartida = crearCodigoPartida()
         conexion_player()
         generarPartida()
     

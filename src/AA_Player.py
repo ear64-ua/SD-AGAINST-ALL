@@ -16,15 +16,13 @@ from threading import Thread
 
 alias = ''
 password = ''
-numJugador = ''
+codigoPartida = 0
 jugadorVivo = True
 partidaIniciada = False
 
 def leerMapa(Broker):
     global jugadorVivo
     global partidaIniciada
-
-    grupo = 'my-group_' + numJugador
 
     consumer = KafkaConsumer(
     'mapa',
@@ -45,24 +43,25 @@ def leerMapa(Broker):
 ##    consumer.seek_to_end()
 
     for message in consumer:
-        if(jugadorVivo):
-            message = message.value
+        if(message['codigoPartida']) == codigoPartida:
+            if(jugadorVivo):
+                message = message.value
 
-            if('mapa' in message):
-                mapa = message['mapa']
-                print(mapa)
-                print('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')
-            elif ('finPartida' in message):
-                if (message['finPartida']):
+                if('mapa' in message):
+                    mapa = message['mapa']
+                    print(mapa)
+                    print('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')
+                elif ('finPartida' in message):
+                    if (message['finPartida']):
+                        consumer.close()
+                        return
+                else:
+                    print('MENSAJE ERRONEO')
                     consumer.close()
                     return
             else:
-                print('MENSAJE ERRONEO')
                 consumer.close()
                 return
-        else:
-            consumer.close()
-            return
                 
 
 def insertarMovimiento(Broker):
@@ -74,6 +73,7 @@ def insertarMovimiento(Broker):
 
     while True:
         data = {'alias': alias,
+                'codigoPartida' : codigoPartida,
                 'move' : input()}       
         if(jugadorVivo and partidaIniciada):        
             producer.send('player_move', value=data)
@@ -87,14 +87,12 @@ def leerEstado(Broker):
 
     global jugadorVivo
     global partidaIniciada
-    grupo = 'my-group_' + numJugador
 
     consumer = KafkaConsumer(
     'estadoJugador',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
-##     group_id=grupo,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
 ##    consumer.poll() ## dummy poll
@@ -105,33 +103,34 @@ def leerEstado(Broker):
         message = message.value 
         print(message)
 
-        if(message['alias'] == alias and partidaIniciada):
-            if(message['nivelReal'] == -99):
-                print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
-                jugadorVivo = False
-        if (message['alias'] == 'broadcast'):
-            if (message['estadoPartida'] == 'inicioPartida'):
-                print('LA PARTIDA HA COMENZADO')
-                partidaIniciada = True
-            elif (message['estadoPartida'] == 'finPartida'):
-                if(partidaIniciada):
-                    if(jugadorVivo):
-                        print('ENHORABUENA. HAS GANADO LA PARTIDA. PULSA LA TECLA INTRO PARA SALIR')
-                        jugadorVivo = False
-                    else:
-                        print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
-                        jugadorVivo = False
-            elif (message['estadoPartida'] == 'finTiempo'):        
-                print('TIEMPO DE PARTIDA FINALIZADO. PULSA LA TECLA INTRO PARA SALIR')
-                jugadorVivo = False    
-            else:
-                print('MENSAJE BROADCAST INCORRECTO')
+        if(message['codigoPartida']) == codigoPartida:
+            if(message['alias'] == alias and partidaIniciada):
+                if(message['nivelReal'] == -99):
+                    print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
+                    jugadorVivo = False
+            if (message['alias'] == 'broadcast'):
+                if (message['estadoPartida'] == 'inicioPartida'):
+                    print('LA PARTIDA HA COMENZADO')
+                    partidaIniciada = True
+                elif (message['estadoPartida'] == 'finPartida'):
+                    if(partidaIniciada):
+                        if(jugadorVivo):
+                            print('ENHORABUENA. HAS GANADO LA PARTIDA. PULSA LA TECLA INTRO PARA SALIR')
+                            jugadorVivo = False
+                        else:
+                            print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
+                            jugadorVivo = False
+                elif (message['estadoPartida'] == 'finTiempo'):        
+                    print('TIEMPO DE PARTIDA FINALIZADO. PULSA LA TECLA INTRO PARA SALIR')
+                    jugadorVivo = False    
+                else:
+                    print('MENSAJE BROADCAST INCORRECTO')
+                    consumer.close()
+                    return
+                    
+            if(not(jugadorVivo)):
                 consumer.close()
-                return
-                
-        if(not(jugadorVivo)):
-            consumer.close()
-            return               
+                return               
 
 def jugarPartida(Broker):
 
@@ -149,11 +148,12 @@ def jugarPartida(Broker):
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
 def conectarPartida(AA_Engine):
 
-    global numJugador
+    global codigoPartida
 
     conectado = False
-
+    engine_socket = None
     engine_socket = socket.socket()
+ 
     engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
 
     msg = engine_socket.recv(1024).decode() 
@@ -178,7 +178,7 @@ def conectarPartida(AA_Engine):
     print()
 
     if data['verified']:
-        numJugador = data['numJugador']    
+        codigoPartida = data['codigoPartida']    
         conectado = True
 
     engine_socket.close()
