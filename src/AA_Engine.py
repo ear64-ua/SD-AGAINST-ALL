@@ -537,6 +537,9 @@ def escucharMovimientos(Broker):
             print(jugador)
             print(mapa)
 
+        borrarPartidaGuardada()
+        guardarPartida()    
+
 
 def generarMensajeEstado(jugador):
     data = {'alias' : jugador.alias,
@@ -694,7 +697,22 @@ def cargarCiudad(objeto, coordenada):
 
     return nuevaCiudad
 
+def cargarJugador(player):
+    jugador = Player(player['alias'], player['nivel'], player['tipo'])    
+    jugador.ciudadX = player['ciudadX']
+    jugador.ciudadY = player['ciudadY']
+    jugador.posX = player['posX']
+    jugador.posY = player['posY']
+    jugador.EF = player['EF']
+    jugador.EC = player['EC']
+    jugador.nivelReal = player['nivelReal']
+
+    return jugador
+
 def cargarPartida():
+
+    global jugadoresVivos
+    
     try:
         conn = MongoClient()
         print("Connected to MongoDB successfully!!!")
@@ -724,11 +742,14 @@ def cargarPartida():
 
     print(objeto['jugadores'])
     lista = json.loads(objeto['jugadores'])
-    print(lista)
-    print(len(lista))
 
-    for jugador in lista:
-        print(jugador['alias'])
+    for player in lista:
+        jugador = cargarJugador(player)
+        arrayJugadores.append(jugador)
+
+    jugadoresVivos = objeto['jugadoresVivos']    
+
+    conn.close()
     return True             
 
 def guardarPartida():
@@ -747,14 +768,15 @@ def guardarPartida():
                 'c2' : json.dumps(mapa.ciudades[0][1].__dict__),
                 'c3' : json.dumps(mapa.ciudades[1][0].__dict__),  
                 'c4' : json.dumps(mapa.ciudades[1][1].__dict__),
-                'jugadores' : jugadores           
+                'jugadores' : jugadores,
+                'jugadoresVivos' : jugadoresVivos
            }
     collection.insert_one(data)
+    conn.close()
 
-def borrarPartida():
+def borrarPartidaGuardada():
     try:
         conn = MongoClient()
-        print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
         return False
@@ -762,21 +784,29 @@ def borrarPartida():
     db = conn.gameDB
 
     try:
-        db.validate_collection('mapa')
+        db.validate_collection('partida')
     except pymongo.errors.OperationFailure:
-        print("No existe una partida ")                  
+        print("No existe una partida ")
+        return                  
 
-def comenzarPartida():
+    db.partida.drop()
+    conn.close()
 
+def generarPartida():
     global jugadoresVivos
     jugadoresVivos = numJugadores
 
-    Broker = Modulo('Broker')
     conexion_clima()
     colocarJugadores()
     rellenarCiudades()
-    print(mapa)
+
     guardarPartida()
+
+def comenzarPartida():
+
+    Broker = Modulo('Broker')
+    
+    print(mapa)
     enviarMensaje(Broker,'broadcast', 'inicioPartida')
     enviarMensaje(Broker, 'mapa', None)
     t1 = threading.Thread(target=escucharMovimientos, args = [Broker])
@@ -785,6 +815,8 @@ def comenzarPartida():
     t2.start()
     t1.join()
     t2.join()
+
+    borrarPartidaGuardada()
 
     print("FIN DE LA PARTIDA")    
 
@@ -811,10 +843,11 @@ def main():
         ##Esperamos que los jugadores se conecten
         print('ESPERANDO JUGADORES')
         conexion_player()
+        generarPartida()
     
     sleep(3)
     ##Creamos la partida y empezamos a jugar
-#    comenzarPartida()
+    comenzarPartida()
 
 if __name__ == "__main__":
     main()
