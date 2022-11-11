@@ -588,6 +588,14 @@ def escucharMovimientos(Broker):
 
 `TODO: completar código y descripción con implementación final`
 
+
+## Consideraciones cuando un jugador entra en una partida
+
+- Los factores de clima frío y calor se deben generar aleatoriamente cuando un jugador entra en la partida. Los valores son entre -10 y +10
+- Cuando un jugador cambia de cuadrante, se debe aplicar el factor de frío o calor, según sea la temperatura de la ciudad donde entra
+- Los factores de clima permanecen constantes durante toda la partida
+- Los factores de clima se deben almacenar en base de datos, junto con el nivel y posición del jugador, por si el AA_Engine cae, y tiene que recuperar la partida
+
 # Steps:
 
 1.  Install [docker](https://www.docker.com/products/docker-desktop/)
@@ -597,27 +605,51 @@ def escucharMovimientos(Broker):
 4.  Run docker-compose up -d
 5.  Test
 
+# Despliegue
 
-## Test Kafka
+``docker compose up --build -d --scale aa_player=x``
 
-1.  Run docker-compose up -d
-2.  Open Offset Explorer
-3.  Run kafka_producer.py
-4.  Run kafka_consumer.py
+## Correr servicios
+
+#### AA_Engine
+``docker exec -it aa_engine bin/sh``
+
+#### AA_Weather
+``docker exec -it aa_weather bin/sh``
+
+#### AA_Registry
+``docker exec -it aa_registry bin/sh``
+
+#### AA_Player
+``docker exec -it src-aa_player-x bin/sh``
+
+#### AA_NPC
+``docker exec -it src-aa_npc-x bin/sh``
+
+## Parar servicios
+
+``docker compose stop``
+
+## Eliminar servicios
+
+``docker compose rm -f``
+
+## Listar contenedores
+``docker ps``
+
+## Listar redes
+``docker network ls``
+
+## Inspeccionar red
+``docker network inspect my_net``
 
 
-## Test AA_Registry-AA_Player
 
-1. Open MongoDB Compass 
-2. Start mongodb service (if neccesary):
-    - MACOS: brew services start mongodb-community
-    - Linux: sudo service mongodb start
-4. Run AA_Registry.py
-5. Run AA_Player.py
 
-## Consideraciones cuando un jugador entra en una partida
 
-- Los factores de clima frío y calor se deben generar aleatoriamente cuando un jugador entra en la partida. Los valores son entre -10 y +10
-- Cuando un jugador cambia de cuadrante, se debe aplicar el factor de frío o calor, según sea la temperatura de la ciudad donde entra
-- Los factores de clima permanecen constantes durante toda la partida
-- Los factores de clima se deben almacenar en base de datos, junto con el nivel y posición del jugador, por si el AA_Engine cae, y tiene que recuperar la partida
+
+
+
+
+
+
