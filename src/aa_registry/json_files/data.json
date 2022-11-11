@@ -1,0 +1,45 @@
+{
+    "ciudades": [
+        {
+            "nombre": "Londres",
+            "temperatura": "5"
+        },
+        {
+            "nombre": "Alicante",
+            "temperatura": "26"
+        },
+        {
+            "nombre": "Sidney",
+            "temperatura": "32"
+        },
+        {
+            "nombre": "Wisconsin",
+            "temperatura": "-15"
+        },
+        {
+            "nombre": "Valencia",
+            "temperatura": "35"
+        },
+        {
+            "nombre": "Murcia",
+            "temperatura": "25"
+        },
+        {
+            "nombre": "Amsterdam",
+            "temperatura": "5"
+        },
+        {
+            "nombre": "Estocolmo",
+            "temperatura": "-25"
+        },
+        {
+            "nombre": "Nueva York",
+            "temperatura": "-10"
+        },
+        {
+            "nombre": "Cancun",
+            "temperatura": "33"
+        }
+    ]
+
+}
