@@ -1,27 +1,104 @@
 version: '2'
+
 services:
+
+  aa_player:
+    ports:
+       - "8800-8880:8881"
+    build: ./aa_player
+    stdin_open: true
+    tty: true
+    networks:
+      my_net:
+
+  aa_npc:
+    ports:
+       - "4800-4880:4881"
+    build: ./aa_npc
+    stdin_open: true
+    tty: true
+    networks:
+      my_net:
+
+  aa_registry:
+    container_name: aa_registry
+    ports:
+       - "1600:1600"
+    build: ./aa_registry
+    stdin_open: true
+    tty: true
+    networks:
+      my_net:
+        aliases: 
+            - aa_registry
+
+  aa_weather:
+    container_name: aa_weather
+    ports:
+       - "1700:1700"
+    build: ./aa_weather
+    stdin_open: true
+    tty: true
+    networks:
+      my_net:
+        aliases: 
+            - aa_weather
+
+  aa_engine:
+    container_name: aa_engine
+    ports:
+       - "1500:1500"
+    build: ./aa_engine
+    stdin_open: true
+    tty: true
+    networks:
+      my_net:
+        aliases: 
+            - aa_engine
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    networks:
+        my_net:
+          aliases: 
+            - mongo_host
+
   zookeeper:
+    container_name: zookeeper
     image: confluentinc/cp-zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - 22181:2181
-  
+      - "22181:2181"
+    networks:
+      - my_net
+
   kafka:
     image: confluentinc/cp-kafka:latest
+    networks:
+      - my_net
     depends_on:
       - zookeeper
     ports:
-      - 29092:29092
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  mongo:
-    image: mongo:latest
-    ports:
-      - 27017:27017
+
+    networks:
+      - my_net
+
+networks:
+  my_net:
+    driver: bridge
+    ipam:
+     driver: default
