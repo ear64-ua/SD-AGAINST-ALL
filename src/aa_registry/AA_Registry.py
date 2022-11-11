@@ -5,7 +5,7 @@ import socket
 import json
 from pymongo import MongoClient   
 import pymongo
-from AA_Player import Modulo
+from classes import Modulo
 # Busca si el alias de un jugador existe en la base de datos
 def findPlayer(collection,data):
 
@@ -25,7 +25,7 @@ def findPlayer(collection,data):
 def mongoInsert(data):
 
     try:
-        conn = MongoClient()
+        conn = MongoClient('mongodb://mongodb')
         print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
@@ -52,7 +52,7 @@ def mongoInsert(data):
 def mongoUpdate(oldData, newData):
 
     try:
-        conn = MongoClient()
+        conn = MongoClient('mongodb://mongodb')
         print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
@@ -119,12 +119,13 @@ def main():
 
     # inicializamos el socket
     register_socket = socket.socket() 
-    register_socket.bind((AA_Registry.getIp(), AA_Registry.getPort())) 
+    ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
+    register_socket.bind((ip, AA_Registry.getPort())) 
 
     # puede escuchar hasta a 4 jugadores
     register_socket.listen(4)
 
-    print(f'Waiting for someone to register...{[AA_Registry.getIp(),AA_Registry.getPort()]} ')
+    print(f'Waiting for someone to register...{[ip,AA_Registry.getPort()]} ')
 
     while(True):
 

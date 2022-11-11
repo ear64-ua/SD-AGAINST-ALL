@@ -4,7 +4,7 @@ class Modulo:
     
     def __init__(self,id):
 
-        file = open('src/json_files/addresses.json')
+        file = open('json_files/addresses.json')
         data = json.load(file)
         file.close()
 

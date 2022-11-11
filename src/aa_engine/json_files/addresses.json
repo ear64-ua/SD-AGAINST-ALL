@@ -2,22 +2,22 @@
     "direcciones": [
         {
             "Id": "AA_Engine",
-            "IP": "127.0.0.1",
+            "IP": "aa_engine",
             "port": "1500"
         },
         {
             "Id": "Broker", 
-            "IP": "127.0.0.1",
-            "port": "29092"
+            "IP": "kafka",
+            "port": "9092"
         },
         {
             "Id": "AA_Registry",
-            "IP": "127.0.0.1",
+            "IP": "aa_registry",
             "port": "1600"
         },
         {
             "Id" : "AA_Weather",
-            "IP" : "127.0.0.1",
+            "IP" : "aa_weather",
             "port": "1700"
         }
     ]

@@ -301,7 +301,8 @@ def sendWeather(AA_Weather):
         print('Socket error because of %s' %(err))
 
     try:
-        conn.connect((AA_Weather.getIp(), AA_Weather.getPort()))
+        ip = socket.gethostbyname_ex(AA_Weather.getIp())[2][0]
+        conn.connect((ip, AA_Weather.getPort()))
 
         i = 0
 
@@ -319,7 +320,7 @@ def sendWeather(AA_Weather):
        
        
     except socket.gaierror:
-        print('There an error resolving the host')
+        print('There was an error while resolving the host')
         sys.exit() 
                 
     conn.close()
@@ -375,7 +376,7 @@ def autentificarJugador(player):
     dataJson = json.loads(login)
 
     try:
-        conn = MongoClient()
+        conn = MongoClient('mongodb://mongodb')
         print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
@@ -641,7 +642,8 @@ def conexion_player():
 
     AA_Engine = Modulo('AA_Engine')
     engine_socket = socket.socket() 
-    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort()))  
+    ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
+    engine_socket.bind((ip, AA_Engine.getPort())) 
 
     engine_socket.listen()
 
@@ -720,7 +722,8 @@ def cargarPartida():
     global jugadoresVivos, codigoPartida
     
     try:
-        conn = MongoClient()
+        conn = MongoClient('mongodb://mongodb')
+        print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
         return False
@@ -760,7 +763,8 @@ def cargarPartida():
 
 def guardarPartida():
     try:
-        conn = MongoClient()
+        conn = MongoClient('mongodb://mongodb')
+        print("Connected to MongoDB successfully!!!")
     except:  
         print("Could not connect to MongoDB")
         return False
@@ -782,7 +786,7 @@ def guardarPartida():
 
 def borrarPartidaGuardada():
     try:
-        conn = MongoClient()
+        conn = MongoClient('mongodb://mongodb')
     except:  
         print("Could not connect to MongoDB")
         return False
@@ -833,7 +837,7 @@ def loadConfFile():
     
     global maxJugadores, tiempoPartida
     
-    file = open('src/json_files/conf.json')
+    file = open('json_files/conf.json')
     data = json.load(file)
     file.close()
 

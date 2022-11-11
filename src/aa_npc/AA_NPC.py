@@ -9,8 +9,6 @@ from classes import Modulo
 from time import sleep
 from json import dumps
 from json import loads
-from AA_Engine import Mapa
-from AA_Engine import Ciudad
 from threading import Thread
 import random
 

@@ -10,8 +10,6 @@ from classes import Modulo
 from time import sleep
 from json import dumps
 from json import loads
-from AA_Engine import Mapa
-from AA_Engine import Ciudad
 from threading import Thread
 
 alias = ''
@@ -29,18 +27,7 @@ def leerMapa(Broker):
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
-##     group_id=grupo,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
-
-
-##    consumer.poll() ## dummy poll
-    ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
-##    assignments = []
-##    partitions = consumer.partitions_for_topic('mapa')
-##    for p in partitions:
-##        assignments.append(TopicPartition('mapa', p))    
-##    consumer.assign(assignments)
-##    consumer.seek_to_end()
 
     for message in consumer:
         if(message['codigoPartida']) == codigoPartida:
@@ -62,7 +49,9 @@ def leerMapa(Broker):
             else:
                 consumer.close()
                 return
-                
+        else:
+            consumer.close()
+            return         
 
 def insertarMovimiento(Broker):
     global jugadorVivo
@@ -94,10 +83,6 @@ def leerEstado(Broker):
      auto_offset_reset='latest',
      enable_auto_commit=True,
      value_deserializer=lambda x: loads(x.decode('utf-8')))
-
-##    consumer.poll() ## dummy poll
-    ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
-##    consumer.seek_to_end()
 
     for message in consumer:
         message = message.value 
@@ -153,8 +138,10 @@ def conectarPartida(AA_Engine):
     conectado = False
     engine_socket = None
     engine_socket = socket.socket()
- 
-    engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
+    # usamos el nombre de host y lo pasamos a IP para que se conecte al socket
+    ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
+    engine_socket.connect((ip,AA_Engine.getPort()))
+
 
     msg = engine_socket.recv(1024).decode() 
     print(msg)
@@ -209,7 +196,8 @@ def insertRegistry(AA_Registry):
         print('Socket error because of %s' %(err))
 
     try:
-        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+        ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
+        conn.connect((ip, AA_Registry.getPort()))
 
         # notificamos al servidor que se quiere insertar
         conn.send('insert'.encode())
@@ -253,7 +241,8 @@ def updateRegistry(AA_Registry):
         print('Socket error because of %s' %(err))
 
     try:
-        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+        ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
+        conn.connect((ip, AA_Registry.getPort()))
 
         # send action to server
         conn.send('update'.encode())
