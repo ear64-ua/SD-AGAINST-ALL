@@ -30,28 +30,25 @@ def leerMapa(Broker):
      value_deserializer=lambda x: loads(x.decode('utf-8')))
 
     for message in consumer:
-        if(message['codigoPartida']) == codigoPartida:
             if(jugadorVivo):
                 message = message.value
-
-                if('mapa' in message):
-                    mapa = message['mapa']
-                    print(mapa)
-                    print('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')
-                elif ('finPartida' in message):
-                    if (message['finPartida']):
+                if(message['codigoPartida']) == codigoPartida:
+                    if('mapa' in message):
+                        mapa = message['mapa']
+                        print(mapa)
+                        print('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')
+                    elif ('finPartida' in message):
+                        if (message['finPartida']):
+                            consumer.close()
+                            return
+                    else:
+                        print('MENSAJE ERRONEO')
                         consumer.close()
-                        return
-                else:
-                    print('MENSAJE ERRONEO')
-                    consumer.close()
-                    return
+                        return  
             else:
                 consumer.close()
                 return
-        else:
-            consumer.close()
-            return         
+     
 
 def insertarMovimiento(Broker):
     global jugadorVivo
@@ -87,7 +84,6 @@ def leerEstado(Broker):
     for message in consumer:
         message = message.value 
         print(message)
-
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
                 if(message['nivelReal'] == -99):
@@ -113,9 +109,9 @@ def leerEstado(Broker):
                     consumer.close()
                     return
                     
-            if(not(jugadorVivo)):
-                consumer.close()
-                return               
+        if(not(jugadorVivo)):
+            consumer.close()
+            return               
 
 def jugarPartida(Broker):
 

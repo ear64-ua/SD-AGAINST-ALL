@@ -474,12 +474,7 @@ def escucharMovimientos(Broker):
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
      enable_auto_commit=True,
-     group_id='my-group',
      value_deserializer=lambda x: loads(x.decode('utf-8')))
-
-    consumer.poll() ## dummy poll
-    ##Ignoramos todos los mensajes que hayan llegado mientras el jugador estaba muerto
-    consumer.seek_to_end()
 
     for message in consumer:
         finTiempo = False
@@ -726,16 +721,11 @@ def cargarPartida():
         print("Connected to MongoDB successfully!!!")
         db = conn.gameDB
 
-        for thread in threading.enumerate(): 
-            print(thread.name)
-
         try:
             db.validate_collection('partida')
         except pymongo.errors.OperationFailure:
             print("No existe una partida guardada. Se procede a crear una partida nueva")
             conn.close()
-            for thread in threading.enumerate(): 
-                print(thread.name)
             return False
     except:  
         print("Could not connect to MongoDB")
