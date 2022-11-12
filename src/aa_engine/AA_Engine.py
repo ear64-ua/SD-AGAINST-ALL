@@ -799,7 +799,12 @@ def borrarPartidaGuardada():
     conn.close()
 
 def crearCodigoPartida():
-    return random.randint(1,999999999999)    
+
+    AA_Engine = Modulo('AA_Engine')
+    socket = socket.socket() 
+    ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
+    socket.close()
+    return ip   
 
 def generarPartida():
     global jugadoresVivos
