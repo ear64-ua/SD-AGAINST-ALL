@@ -349,9 +349,14 @@ def sendWeather(AA_Weather):
         conn.send('ok'.encode())
        
        
-    except socket.gaierror:
-        print('There was an error while resolving the host')
-        sys.exit() 
+    except: 
+        if socket.gaierror:
+            print('There was an error while resolving the host')
+        else:
+            print('Hubo un error al conectar con el servidor de tiempo')    
+        conn.close()
+        return False
+
                 
     conn.close()
 
@@ -521,6 +526,9 @@ def escucharMovimientos(Broker):
             jugador = buscarJugador(arrayJugadores, alias)
             if jugador != False:
                 if int(jugador.nivelReal) >= -10: ##Caso se mueve un jugador vivo. Si esta muerto, se ignora
+                    #Genero el ACK correspondiente al mensaje que acabo de leer
+                    data = generarAckMovimiento(jugador, message['numMovimiento'])
+                    enviarMensaje(Broker, 'ackMovimiento', data)
                     ##quito del mapa al jugador
                     mapa.borrarJugador(jugador)
                     ##coloco al jugador en su nueva casilla
@@ -574,7 +582,15 @@ def generarMensajeEstado(jugador):
            'nivelReal' : jugador.nivelReal,
            'codigoPartida' : codigoPartida
     }
-    return data    
+    return data
+
+def generarAckMovimiento(jugador, numMovimiento):
+    data = {'alias' : jugador.alias,
+           'nivelReal' : jugador.nivelReal,
+           'numMovimiento' : numMovimiento,
+           'codigoPartida' : codigoPartida
+    }
+    return data        
 
 def enviarMensaje(Broker, tipoMensaje, valorMensaje):
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
@@ -591,7 +607,10 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
                 'codigoPartida' : codigoPartida}
     elif tipoMensaje == 'estadoJugador':
         cola = 'estadoJugador'
-        data = valorMensaje        
+        data = valorMensaje
+    elif tipoMensaje == 'ackMovimiento':
+        cola = 'estadoJugador'
+        data = valorMensaje            
     elif tipoMensaje == 'mapa':
         cola = 'mapa'
         if (jugadoresVivos > 1):
@@ -694,16 +713,21 @@ def conexion_clima(AA_Weather):
 
     num_bloque = 0
     #lee las ciudades almacenadas en el fichero y las añade al mapa
-    for ciudad in cities['ciudades']:
+    
+    if cities == False:
+        return False
+    else:    
+        for ciudad in cities['ciudades']:
 
-        nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD,str(num_bloque))
+            nueva_ciudad=Ciudad(ciudad['nombre'],ciudad['temperatura'],TAM_CIUDAD,str(num_bloque))
 
-        # i y j tomarán los valores en binario con longitud de dos bits de num_bloque (00,01,10,11)
-        i = int(f'{num_bloque:02b}'[0])
-        j = int(f'{num_bloque:02b}'[1])
-        
-        mapa.addCiudad(i,j,nueva_ciudad)
-        num_bloque += 1
+            # i y j tomarán los valores en binario con longitud de dos bits de num_bloque (00,01,10,11)
+            i = int(f'{num_bloque:02b}'[0])
+            j = int(f'{num_bloque:02b}'[1])
+            
+            mapa.addCiudad(i,j,nueva_ciudad)
+            num_bloque += 1
+        return True    
 
 def colocarJugadores():
     for jugador in arrayJugadores:
@@ -837,11 +861,13 @@ def generarPartida(AA_Weather):
     global jugadoresVivos
     jugadoresVivos = numJugadores
 
-    conexion_clima(AA_Weather)
-    colocarJugadores()
-    rellenarCiudades()
-
-    guardarPartida()
+    if conexion_clima(AA_Weather):
+        colocarJugadores()
+        rellenarCiudades()
+        guardarPartida()
+        return True
+    else:
+        return False    
 
 def comenzarPartida():
 
@@ -876,6 +902,7 @@ def loadConfFile():
 def main():
 
     global codigoPartida
+    comenzar = False
 
     arrayJugadores.clear
     arrayNPCs.clear
@@ -894,17 +921,26 @@ def main():
     loadConfFile()
 
     codigoPartida = AA_Engine.getIp()
-    if(cargarPartida() == False):
-
+    if(cargarPartida() == True):
+        Broker = Modulo('Broker')
+        Broker.setIPfromJson('Broker')
+        enviarMensaje(Broker, 'broadcast','continuarPartida')
+        comenzar = True
+    else:
         ##Esperamos que los jugadores se conecten
         print('ESPERANDO JUGADORES')
         conexion_player(AA_Engine)
-        generarPartida(AA_Weather)
+        comenzar = generarPartida(AA_Weather)
     
     sleep(3)
+    if comenzar:
     ##Creamos la partida y empezamos a jugar
-    comenzarPartida()
-
+        comenzarPartida()
+    else:
+        print("ERROR. LA PARTIDA NO PUEDE COMENZAR")
+        Broker = Modulo('Broker')
+        Broker.setIPfromJson('Broker')    
+        enviarMensaje(Broker,'broadcast', 'finTiempo')
 if __name__ == "__main__":
     main()
 

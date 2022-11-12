@@ -16,6 +16,8 @@ password = ''
 codigoPartida = 0
 jugadorVivo = True
 partidaIniciada = False
+numMovimientos = 1
+ackRecibido = True
 
 class Modulo:
     
@@ -84,7 +86,10 @@ def leerMapa(Broker):
 
 def insertarMovimiento(Broker):
     global jugadorVivo
+    global numMovimientos
     global partidaIniciada
+    global ackRecibido
+
     producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
                          value_serializer=lambda x: 
                          dumps(x).encode('utf-8'))
@@ -92,10 +97,16 @@ def insertarMovimiento(Broker):
     while True:
         data = {'alias': alias,
                 'codigoPartida' : codigoPartida,
+                'numMovimiento' : numMovimientos,
                 'move' : input()}       
         if(jugadorVivo and partidaIniciada):        
             producer.send('player_move', value=data)
+            numMovimientos = numMovimientos + 1
+            ackRecibido = False    
         sleep(1)
+        if(not(ackRecibido)):
+            print('EL SERVIDOR SE HA CAIDO. POR FAVOR, ESPERA A LA RECONEXION')
+            partidaIniciada = False
 
         if(not(jugadorVivo)):
             producer.close()
@@ -104,7 +115,9 @@ def insertarMovimiento(Broker):
 def leerEstado(Broker):
 
     global jugadorVivo
+    global numMovimientos
     global partidaIniciada
+    global ackRecibido
 
     consumer = KafkaConsumer(
     'estadoJugador',
@@ -118,13 +131,20 @@ def leerEstado(Broker):
         print(message)
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
+                if(message['numMovimiento'] == numMovimientos-1):
+                    ackRecibido = True
                 if(message['nivelReal'] == -99):
                     print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
                     jugadorVivo = False
             if (message['alias'] == 'broadcast'):
                 if (message['estadoPartida'] == 'inicioPartida'):
-                    print('LA PARTIDA HA COMENZADO')
+                    #Esto es para que no salga el mensaje cuando se recupera la partida de un error del servidor
+                    if(partidaIniciada == False):
+                        print('LA PARTIDA HA COMENZADO')
                     partidaIniciada = True
+                elif (message['estadoPartida'] == 'continuarPartida'):
+                    print('SE HA RECUPERADO LA CONEXIÓN CON EL SERVIDOR. PUEDES SEGUIR JUGANDO')
+                    partidaIniciada = True    
                 elif (message['estadoPartida'] == 'finPartida'):
                     if(partidaIniciada):
                         if(jugadorVivo):
