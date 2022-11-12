@@ -3,7 +3,6 @@ import random
 import socket
 import sys
 import threading
-from classes import Modulo
 from pymongo import MongoClient   
 import pymongo
 from kafka import KafkaConsumer
@@ -35,9 +34,42 @@ jugadoresVivos = 0
 tiempoPartida = 300
 codigoPartida = 0
 
-
 def colored_background(r, g, b, text):
     return f'\033[48;2;{r};{g};{b}m{text}\033[0m'
+
+class Modulo:
+    
+    def __init__(self,id):
+        self.ip = "127.0.0.1"
+        file = open('json_files/addresses.json')
+        data = json.load(file)
+        file.close()
+
+        for dir in data['direcciones']:
+            if dir['Id'] == id:
+                self.port = int(dir['port'])
+
+    def setIPfromJson(self,id):
+        file = open('json_files/addresses.json')
+        data = json.load(file)
+        file.close()
+
+        for dir in data['direcciones']:
+            if dir['Id'] == id:
+                self.ip = dir['IP']
+
+    def setIp(self,ip):
+        self.ip = ip
+    
+    def setPort(self,port):
+        self.port = port
+    
+    def getIp(self):
+        return self.ip
+    
+    def getPort(self):
+        return self.port
+
 
 class Player:
     def __init__(self,alias,nivel,tipo):
@@ -77,7 +109,6 @@ class Player:
         else:
             self.nivelReal = int(self.nivel)        
             
-
 class Ciudad:
     def __init__(self,nombre,temperatura,tam, num):
         self.casillas = [ [ '.' for i in range(TAM_CIUDAD) ] for j in range(TAM_CIUDAD) ]
@@ -301,8 +332,7 @@ def sendWeather(AA_Weather):
         print('Socket error because of %s' %(err))
 
     try:
-        ip = socket.gethostbyname_ex(AA_Weather.getIp())[2][0]
-        conn.connect((ip, AA_Weather.getPort()))
+        conn.connect((AA_Weather.getIp(), AA_Weather.getPort()))
 
         i = 0
 
@@ -632,13 +662,11 @@ def handle_player(conn,addr):
 
     conn.close()
 
-def conexion_player():
+def conexion_player(AA_Engine):
     ## Conexión AA_Player
     threading.current_thread()
-    AA_Engine = Modulo('AA_Engine')
     engine_socket = socket.socket() 
-    ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
-    engine_socket.bind((ip, AA_Engine.getPort())) 
+    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort())) 
 
     engine_socket.listen()
 
@@ -657,13 +685,10 @@ def conexion_player():
     engine_socket.close()    
     return True
 
-def conexion_clima():
+def conexion_clima(AA_Weather):
     ## Conexión AA_Weather
 
     cities = ''
-
-    #guardar el puerto e IP de weather
-    AA_Weather = Modulo('AA_Weather')
 
     cities = sendWeather(AA_Weather)
 
@@ -798,19 +823,11 @@ def borrarPartidaGuardada():
     db.partida.drop()
     conn.close()
 
-def crearCodigoPartida():
-
-    AA_Engine = Modulo('AA_Engine')
-    socket = socket.socket() 
-    ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
-    socket.close()
-    return ip   
-
-def generarPartida():
+def generarPartida(AA_Weather):
     global jugadoresVivos
     jugadoresVivos = numJugadores
 
-    conexion_clima()
+    conexion_clima(AA_Weather)
     colocarJugadores()
     rellenarCiudades()
 
@@ -819,6 +836,7 @@ def generarPartida():
 def comenzarPartida():
 
     Broker = Modulo('Broker')
+    Broker.setIPfromJson('Broker')
     
     print(mapa)
     enviarMensaje(Broker,'broadcast', 'inicioPartida')
@@ -852,15 +870,26 @@ def main():
     arrayJugadores.clear
     arrayNPCs.clear
 
+    if len(sys.argv[1:]) < 2:
+        print('Uso incorrecto de argumentos. Use IP_engine IP_weather')
+        return -1
+    args = sys.argv[1:]
+
+    AA_Engine = Modulo('AA_Engine')
+    AA_Engine.setIp(args[0])
+
+    AA_Weather = Modulo('AA_Weather')
+    AA_Weather.setIp(args[1])
+
     loadConfFile()
 
     if(cargarPartida() == False):
 
         ##Esperamos que los jugadores se conecten
         print('ESPERANDO JUGADORES')
-        codigoPartida = crearCodigoPartida()
-        conexion_player()
-        generarPartida()
+        codigoPartida = AA_Engine.getIp()
+        conexion_player(AA_Engine)
+        generarPartida(AA_Weather)
     
     sleep(3)
     ##Creamos la partida y empezamos a jugar

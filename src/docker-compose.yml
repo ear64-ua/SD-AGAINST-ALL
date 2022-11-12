@@ -3,8 +3,6 @@ version: '2'
 services:
 
   aa_player:
-    ports:
-       - "8800-8880:8881"
     build: ./aa_player
     stdin_open: true
     tty: true
@@ -12,8 +10,6 @@ services:
       my_net:
 
   aa_npc:
-    ports:
-       - "4800-4880:4881"
     build: ./aa_npc
     stdin_open: true
     tty: true
@@ -33,28 +29,18 @@ services:
             - aa_registry
 
   aa_weather:
-    container_name: aa_weather
-    ports:
-       - "1700:1700"
     build: ./aa_weather
     stdin_open: true
     tty: true
     networks:
       my_net:
-        aliases: 
-            - aa_weather
 
   aa_engine:
-    container_name: aa_engine
-    ports:
-       - "1500:1500"
     build: ./aa_engine
     stdin_open: true
     tty: true
     networks:
       my_net:
-        aliases: 
-            - aa_engine
 
   mongodb:
     image: mongo:latest
@@ -89,13 +75,10 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-    networks:
-      - my_net
 
 networks:
   my_net:

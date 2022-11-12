@@ -6,7 +6,6 @@ import threading
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from kafka import TopicPartition
-from classes import Modulo
 from time import sleep
 from json import dumps
 from json import loads
@@ -17,6 +16,39 @@ password = ''
 codigoPartida = 0
 jugadorVivo = True
 partidaIniciada = False
+
+class Modulo:
+    
+    def __init__(self,id):
+        self.ip = "127.0.0.1"
+        file = open('json_files/addresses.json')
+        data = json.load(file)
+        file.close()
+
+        for dir in data['direcciones']:
+            if dir['Id'] == id:
+                self.port = int(dir['port'])
+
+    def setIPfromJson(self,id):
+        file = open('json_files/addresses.json')
+        data = json.load(file)
+        file.close()
+
+        for dir in data['direcciones']:
+            if dir['Id'] == id:
+                self.ip = dir['IP']
+
+    def setIp(self,ip):
+        self.ip = ip
+    
+    def setPort(self,port):
+        self.port = port
+    
+    def getIp(self):
+        return self.ip
+    
+    def getPort(self):
+        return self.port
 
 def leerMapa(Broker):
     global jugadorVivo
@@ -135,8 +167,7 @@ def conectarPartida(AA_Engine):
     engine_socket = None
     engine_socket = socket.socket()
     # usamos el nombre de host y lo pasamos a IP para que se conecte al socket
-    ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
-    engine_socket.connect((ip,AA_Engine.getPort()))
+    engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
 
 
     msg = engine_socket.recv(1024).decode() 
@@ -192,8 +223,7 @@ def insertRegistry(AA_Registry):
         print('Socket error because of %s' %(err))
 
     try:
-        ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
-        conn.connect((ip, AA_Registry.getPort()))
+        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
 
         # notificamos al servidor que se quiere insertar
         conn.send('insert'.encode())
@@ -237,8 +267,7 @@ def updateRegistry(AA_Registry):
         print('Socket error because of %s' %(err))
 
     try:
-        ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
-        conn.connect((ip, AA_Registry.getPort()))
+        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
 
         # send action to server
         conn.send('update'.encode())
@@ -273,10 +302,18 @@ def menu():
 
 def main():
     
+    if len(sys.argv[1:]) < 2:
+        print('Uso incorrecto de argumentos. Use IP_engine IP_registry')
+        return -1
+    args = sys.argv[1:]
+
     # Creamos los módulos para conseguir las direcciones necesarias
     AA_Engine = Modulo('AA_Engine')
+    AA_Engine.setIp(args[0])
     AA_Registry = Modulo('AA_Registry')
+    AA_Registry.setIp(args[1])
     Broker = Modulo('Broker') 
+    Broker.setIPfromJson('Broker')
 
     while jugadorVivo:
         opcion = menu()

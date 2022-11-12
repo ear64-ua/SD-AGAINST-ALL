@@ -2,7 +2,6 @@
     "direcciones": [
         {
             "Id": "AA_Engine",
-            "IP": "aa_engine",
             "port": "1500"
         },
         {
@@ -11,13 +10,7 @@
             "port": "9092"
         },
         {
-            "Id": "AA_Registry",
-            "IP": "aa_registry",
-            "port": "1600"
-        },
-        {
             "Id" : "AA_Weather",
-            "IP" : "aa_weather",
             "port": "1700"
         }
     ]

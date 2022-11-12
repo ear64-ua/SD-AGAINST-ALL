@@ -1,8 +1,4 @@
 from base64 import encode
-import socket
-import sys
-import json
-import threading
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from classes import Modulo
