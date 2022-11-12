@@ -606,7 +606,6 @@ def handle_player(conn,addr):
 
     global numJugadores
     jugador = autentificarJugador(conn)
-
     if jugador != False:
         objetoJugador = Player(jugador['alias'], jugador['nivel'], 'PC')
         if(buscarJugador(arrayJugadores,jugador['alias'])):
@@ -627,7 +626,7 @@ def handle_player(conn,addr):
             data = json.dumps(data)
             conn.send(data.encode())
             numJugadores = numJugadores + 1        
-           
+    
     else:
         data = {    'msg' : 'Alias o password incorrecto !',
                     'verified' : False
@@ -639,7 +638,7 @@ def handle_player(conn,addr):
 
 def conexion_player():
     ## Conexión AA_Player
-
+    threading.current_thread()
     AA_Engine = Modulo('AA_Engine')
     engine_socket = socket.socket() 
     ip = socket.gethostbyname_ex(AA_Engine.getIp())[2][0]
@@ -647,10 +646,11 @@ def conexion_player():
 
     engine_socket.listen()
 
-    while numJugadores < maxJugadores:
+    while numJugadores < maxJugadores:        
         if (threading.active_count() - 1 < maxJugadores - numJugadores):
+            print('7')
             conn, addr = engine_socket.accept()  
-
+            print('8')
             thread = threading.Thread(target=handle_player, args = (conn,addr))
             thread.start()
 
@@ -724,16 +724,21 @@ def cargarPartida():
     try:
         conn = MongoClient('mongodb://mongodb')
         print("Connected to MongoDB successfully!!!")
+        db = conn.gameDB
+
+        for thread in threading.enumerate(): 
+            print(thread.name)
+
+        try:
+            db.validate_collection('partida')
+        except pymongo.errors.OperationFailure:
+            print("No existe una partida guardada. Se procede a crear una partida nueva")
+            conn.close()
+            for thread in threading.enumerate(): 
+                print(thread.name)
+            return False
     except:  
         print("Could not connect to MongoDB")
-        return False
-
-    db = conn.gameDB
-
-    try:
-        db.validate_collection('partida')
-    except pymongo.errors.OperationFailure:
-        print("No existe una partida guardada. Se procede a crear una partida nueva")
         return False
 
     collection = db.partida

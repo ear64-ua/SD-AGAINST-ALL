@@ -643,8 +643,7 @@ def escucharMovimientos(Broker):
 ## Inspeccionar red
 ``docker network inspect my_net``
 
-
-
+``docker inspect --format='{{.Name}} - {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -aq)``
 
 
 
