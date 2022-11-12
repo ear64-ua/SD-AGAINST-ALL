@@ -757,29 +757,38 @@ def cargarPartida():
         print("Could not connect to MongoDB")
         return False
 
-    collection = db.partida
-    partida = collection.find()
-    objeto= partida[0]
-    nuevaCiudad = cargarCiudad(objeto, 'c1')
-    mapa.ciudades[0][0] = nuevaCiudad
-    nuevaCiudad = cargarCiudad(objeto, 'c2')
-    mapa.ciudades[0][1] = nuevaCiudad
-    nuevaCiudad = cargarCiudad(objeto, 'c3')
-    mapa.ciudades[1][0] = nuevaCiudad
-    nuevaCiudad = cargarCiudad(objeto, 'c4')
-    mapa.ciudades[1][1] = nuevaCiudad
+    try:
+        collection = db.partida
+        partida = collection.find_one({'codigoPartida' : codigoPartida})
+        if (partida == None):
+            print("No existe una partida guardada. Se procede a crear una partida nueva")
+            conn.close()
+            return False
+        else:    
+            nuevaCiudad = cargarCiudad(partida, 'c1')
+            mapa.ciudades[0][0] = nuevaCiudad
+            nuevaCiudad = cargarCiudad(partida, 'c2')
+            mapa.ciudades[0][1] = nuevaCiudad
+            nuevaCiudad = cargarCiudad(partida, 'c3')
+            mapa.ciudades[1][0] = nuevaCiudad
+            nuevaCiudad = cargarCiudad(partida, 'c4')
+            mapa.ciudades[1][1] = nuevaCiudad
 
-    print(objeto['jugadores'])
-    lista = json.loads(objeto['jugadores'])
+            print(partida['jugadores'])
+            lista = json.loads(partida['jugadores'])
 
-    for player in lista:
-        jugador = cargarJugador(player)
-        arrayJugadores.append(jugador)
+            for player in lista:
+                jugador = cargarJugador(player)
+                arrayJugadores.append(jugador)
 
-    jugadoresVivos = objeto['jugadoresVivos']
-    codigoPartida = objeto['codigoPartida']    
+            jugadoresVivos = partida['jugadoresVivos']
+            codigoPartida = partida['codigoPartida']    
 
-    conn.close()
+            conn.close()
+    except:
+        print("Error al cargar la partida")
+        conn.close()
+
     return True             
 
 def guardarPartida():
@@ -816,11 +825,12 @@ def borrarPartidaGuardada():
 
     try:
         db.validate_collection('partida')
+        db.partida.delete_one({'codigoPartida' : codigoPartida})
     except pymongo.errors.OperationFailure:
-        print("No existe una partida ")
+        print("No se puede borrar partida ")
+        conn.close()
         return                  
 
-    db.partida.drop()
     conn.close()
 
 def generarPartida(AA_Weather):
@@ -883,11 +893,11 @@ def main():
 
     loadConfFile()
 
+    codigoPartida = AA_Engine.getIp()
     if(cargarPartida() == False):
 
         ##Esperamos que los jugadores se conecten
         print('ESPERANDO JUGADORES')
-        codigoPartida = AA_Engine.getIp()
         conexion_player(AA_Engine)
         generarPartida(AA_Weather)
     
