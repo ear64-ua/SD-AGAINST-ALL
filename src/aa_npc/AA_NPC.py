@@ -58,6 +58,7 @@ def insertarMovimiento(Broker):
     while True:
         indice = random.randint(0,len(arrayMovimientos)-1)
         data = {'alias': alias,
+                'codigoPartida' : 'NPC',
                 'move' : arrayMovimientos[indice]}
         print(data)               
         if(jugadorVivo):        

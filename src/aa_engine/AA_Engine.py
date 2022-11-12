@@ -485,57 +485,58 @@ def escucharMovimientos(Broker):
             alias = message['alias']
         except:
             finTiempo = message['finTiempo']
-        if finTiempo:
-            return
-        jugador = buscarJugador(arrayJugadores, alias)
-        if jugador != False:
-            if int(jugador.nivelReal) >= -10: ##Caso se mueve un jugador vivo. Si esta muerto, se ignora
-                ##quito del mapa al jugador
-                mapa.borrarJugador(jugador)
-                ##coloco al jugador en su nueva casilla
+        if (message['codigoPartida'] == codigoPartida or message['codigoPartida'] == 'NPC'):
+            if finTiempo:
+                return
+            jugador = buscarJugador(arrayJugadores, alias)
+            if jugador != False:
+                if int(jugador.nivelReal) >= -10: ##Caso se mueve un jugador vivo. Si esta muerto, se ignora
+                    ##quito del mapa al jugador
+                    mapa.borrarJugador(jugador)
+                    ##coloco al jugador en su nueva casilla
+                    moverJugador(jugador,direccion)
+                    jugador.actualizarNivelReal()
+                    ##compruebo si hay algo en la nueva casilla y pinto el resultado
+                    data = mapa.analizarChoqueJugador(jugador)
+                    
+                    if data != '':
+                        ##Envio el estado de los jugadores implicados en el movimiento
+                        enviarMensaje(Broker, 'estadoJugador', data)
+                    ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
+                    if (jugadoresVivos == 1):
+                        enviarMensaje(Broker,'broadcast', 'finPartida')    
+                    ##Envio el mapa a los jugadores para que lo pinten tambien
+                    enviarMensaje(Broker, 'mapa', None)
+                    if(jugadoresVivos == 1):
+                        return
+
+                    print(jugador)
+                    print(mapa)
+            else: ##caso se mueve un NPC  
+                jugador = buscarJugador(arrayNPCs, alias)
+                if (jugador == False): ##El jugador no está presente en el array
+                    ##Creo un nuevo jugador NPC y lo meto en el array de NPCs
+                    jugador = Player(alias, int(alias[0]), 'NPC')
+                    arrayNPCs.append(jugador)
+                mapa.borrarJugador(jugador)    
                 moverJugador(jugador,direccion)
-                jugador.actualizarNivelReal()
-                ##compruebo si hay algo en la nueva casilla y pinto el resultado
                 data = mapa.analizarChoqueJugador(jugador)
-                
                 if data != '':
                     ##Envio el estado de los jugadores implicados en el movimiento
-                    enviarMensaje(Broker, 'estadoJugador', data)
-                ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
-                if (jugadoresVivos == 1):
-                    enviarMensaje(Broker,'broadcast', 'finPartida')    
-                ##Envio el mapa a los jugadores para que lo pinten tambien
+                    enviarMensaje(Broker,'estadoJugador', data)
+                    ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
+                    if (jugadoresVivos == 1):
+                        enviarMensaje(Broker, 'broadcast', 'finPartida')    
+                    ##Envio el mapa a los jugadores para que lo pinten tambien
                 enviarMensaje(Broker, 'mapa', None)
                 if(jugadoresVivos == 1):
                     return
 
                 print(jugador)
                 print(mapa)
-        else: ##caso se mueve un NPC  
-            jugador = buscarJugador(arrayNPCs, alias)
-            if (jugador == False): ##El jugador no está presente en el array
-                ##Creo un nuevo jugador NPC y lo meto en el array de NPCs
-                jugador = Player(alias, int(alias[0]), 'NPC')
-                arrayNPCs.append(jugador)
-            mapa.borrarJugador(jugador)    
-            moverJugador(jugador,direccion)
-            data = mapa.analizarChoqueJugador(jugador)
-            if data != '':
-                ##Envio el estado de los jugadores implicados en el movimiento
-                enviarMensaje(Broker,'estadoJugador', data)
-                ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
-                if (jugadoresVivos == 1):
-                    enviarMensaje(Broker, 'broadcast', 'finPartida')    
-                ##Envio el mapa a los jugadores para que lo pinten tambien
-            enviarMensaje(Broker, 'mapa', None)
-            if(jugadoresVivos == 1):
-                return
 
-            print(jugador)
-            print(mapa)
-
-        borrarPartidaGuardada()
-        guardarPartida()    
+            borrarPartidaGuardada()
+            guardarPartida()    
 
 
 def generarMensajeEstado(jugador):
