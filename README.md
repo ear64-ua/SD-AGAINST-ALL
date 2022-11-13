@@ -684,21 +684,34 @@ Detallamos a continuación los efectos de la caída de cada módulo, y qué ocur
 
 El módulo de registro sólo es necesario cuando un jugador se intenta dar de alta en el sistema. No afecta al desarrollo de las partidas.  
 El efecto de la caída de este módulo es que se muestran mensajes de error en el módulo AA_Player, indicando que no se puede conectar al registro.  
-Cuando el módulo se recupera, no se muestra ningún mensaje especial. Simplemente la funcionalidad de registro vuelve a funcionar.
+Cuando el módulo se vuelve a arrancar, no se muestra ningún mensaje especial. Simplemente la funcionalidad de registro vuelve a funcionar.
 
 ## AA_Weather
 
 El módulo de clima es necesario para la generación de nuevas partidas, y solamente en el momento de la creación de las mismas. Una vez se ha generado la partida, su caída es transparente para el resto de módulos.  
 El efecto de la caída es que se muestra un mensaje de error en el servidor, se envía un mensaje broadcast de finTiempo a los módulos AA_Player, y se cierra la partida. Los jugadores reciben el mensaje broadcast, informa de que la partida no puede comenzar, y desconectan la aplicación.  
-Cuando el módulo se recupera, no se desencadena ningún mensaje especial ni se hace ninguna acción específica.
+Cuando el módulo se vuelve a arrancar, no se desencadena ningún mensaje especial ni se hace ninguna acción específica.
 
 ## AA_NPC
 
 El módulo de NPCs es un complemento a las partidas, y se puede caer en cualquier momento durante una partida. Cuando un NPC cae, no afecta en nada al resto de componentes de la partida.  
-El efecto de la caída es que la aplicación deja de enviar mensajes a la cola de movimientos. El servidor no es capaz de saber que este módulo ha caído, por lo que simplemente mantiene al jugador NPC en el mapa, sin moverse, hasta que otro NPC o un jugador lo mate.
-Cuando el módulo se recupera, se genera un nuevo NPC, que se mueve de forma independiente al NPC anterior que cayó.
+El efecto de la caída es que la aplicación deja de enviar mensajes a la cola de movimientos. El servidor no es capaz de saber que este módulo ha caído, por lo que simplemente mantiene al jugador NPC en el mapa, sin moverse, hasta que otro NPC o un jugador lo mate.  
+Cuando el módulo se vuelve a arrancar, se genera un nuevo NPC, que se mueve de forma independiente al NPC anterior que cayó.
 
 ## AA_Player
+
+El módulo de jugadores es una parte importante de la partida. Funciona de manera similar a los NPCs. Esto es, cuando un jugador cae, se considera que ya no puede volver a entrar en la partida. No hemos diseñado un mecanismo de reconexión a la partida, aunque dicha partida siga en marcha.  
+El efecto de la caída es que la aplicación deja de enviar mensajes a la cola de movimientos. El servidor no es capaz de saber que este módulo ha caído, por lo que simplemente mantiene al jugador en el mapa, sin moverse, hasta que otro jugador o un NPC lo mate.  
+Cuando el módulo se vuelve a arrancar, se genera un nuevo jugador, que funciona de forma totalmente independiente al jugador anterior que cayó. Tendrá que conectarse a una nueva partida, etc.
+
+## AA_Engine
+
+El módulo del motor del juego es crucial en la partida, y es donde hemos dedicado más esfuerzo en su recuperación. Este módulo es la base de todo el juego, y si cae, los jugadores dejan de poder jugar.  
+El efecto de la caída es que la aplicación deja de leer las colas de movimiento, y de escribir mensajes. Al no leer colas, es posible que los jugadores metan muchos datos, que al final no van a ninguna parte. Por ello, hemos creado un sistema de ping y ACK utilizando Kafka, ya que no está permitido utilizar sockets, que es la forma más sencilla que hay de implementar este ping-pong. La lógica seguida está detallada en el siguiente diagrama:  
+**INSERTAR DIAGRAMA** **PENDIENTE** **TODO** **TO_DO**
+
+El mecanismo de ping-pong es el siguiente: Cuando un jugador inserta un movimiento, envía al Engine, mediante la cola de movimientos, un código de control. Este código debe ser devuelto mediante la cola de control al jugador. Si el mensaje le llega en el siguiente segundo, el jugador sigue funcionando con normalidad. Si no llega el mensaje, el jugador paraliza el envío de movimientos, y queda a la espera de recibir un mensaje de que el servidor se ha recuperado.  
+Cuando el módulo se vuelve a arrancar, este comprueba si hay una partida guardada que pertenezca al servidor. De ser así, se procede a recargar todos los datos importantes de la partida (mapa, ciudades, lista de jugadores que pertenecían a la partida), y se envía un mensaje de broadcast de reconexión. Gracias a este mensaje, en cada módulo de jugador que esté activo se muestra un mensaje de recuperación, y los jugadores recuperan la funcionalidad, volviendo a funcionar el módulo de jugador con normalidad. 
 
 ## Consideraciones cuando un jugador entra en una partida
 
