@@ -1,6 +1,8 @@
 
 read -p 'Engine nº: ' n_engine
 read -p 'Weather nº: ' n_weather
+read -p 'Number of players nº: ' num_players
+read -p 'Match time: ' match_time
 
 base_engine="src-aa_engine-$n_engine"
 base_weather="src-aa_weather-$n_weather"
@@ -16,7 +18,7 @@ ip_weather=$(echo $weather| cut -d' ' -f 3)
 echo "Engine: $ip_engine"
 echo "Weather: $ip_weather"
 
-docker exec -it $base_engine python3 AA_Engine.py $ip_engine $ip_weather
+docker exec -it $base_engine python3 AA_Engine.py $ip_engine $ip_weather $num_players $match_time
 
 
 
