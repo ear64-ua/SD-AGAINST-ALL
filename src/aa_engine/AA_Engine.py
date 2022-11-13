@@ -561,7 +561,7 @@ def escucharMovimientos(Broker):
                 jugador = buscarJugador(arrayNPCs, alias)
                 if (jugador == False): ##El jugador no está presente en el array
                     ##Creo un nuevo jugador NPC y lo meto en el array de NPCs
-                    jugador = Player(alias, int(alias[0]), 'NPC','')
+                    jugador = Player(alias, int(alias[0]), 'NPC',message['nivel'])
                     arrayNPCs.append(jugador)
                 mapa.borrarJugador(jugador)    
                 moverJugador(jugador,direccion)
