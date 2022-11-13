@@ -674,6 +674,29 @@ El segundo hilo está indefinidamente leyendo el topic de **kafka** que contiene
 
 ## AA_NPC
 
+**Pendiente** **TODO** **TO_DO**
+
+# Resiliencia
+
+Detallamos a continuación los efectos de la caída de cada módulo, y qué ocurre cuando vuelve a funcionar.
+
+## AA_Registry
+
+El módulo de registro sólo es necesario cuando un jugador se intenta dar de alta en el sistema. No afecta al desarrollo de las partidas.  
+El efecto de la caída de este módulo es que se muestran mensajes de error en el módulo AA_Player, indicando que no se puede conectar al registro.  
+Cuando el módulo se recupera, no se muestra ningún mensaje especial. Simplemente la funcionalidad de registro vuelve a funcionar.
+
+## AA_Weather
+
+El módulo de clima es necesario para la generación de nuevas partidas, y solamente en el momento de la creación de las mismas. Una vez se ha generado la partida, su caída es transparente para el resto de módulos.  
+El efecto de la caída es que se muestra un mensaje de error en el servidor, se envía un mensaje broadcast de finTiempo a los módulos AA_Player, y se cierra la partida. Los jugadores reciben el mensaje broadcast, informa de que la partida no puede comenzar, y desconectan la aplicación.  
+Cuando el módulo se recupera, no se desencadena ningún mensaje especial ni se hace ninguna acción específica.
+
+## AA_NPC
+
+El módulo de NPCs es un complemento a las partidas, y se puede caer en cualquier momento durante una partida. Cuando un NPC cae, no afecta en nada al resto de componentes de la partida.  
+El efecto de la caída es que la aplicación deja de enviar mensajes a la cola de movimientos. El servidor no es capaz de saber que este módulo ha caído, por lo que simplemente mantiene al jugador NPC en el mapa, sin moverse, hasta que otro NPC o un jugador lo mate.
+Cuando el módulo se recupera, se genera un nuevo NPC, que se mueve de forma independiente al NPC anterior que cayó.
 
 ## Consideraciones cuando un jugador entra en una partida
 
