@@ -22,8 +22,14 @@ NUM_CITIES = 4
 MIN_CLIMA = -10
 MAX_CLIMA = 10
 
-ERR_ARGS = 'Uso incorrecto de argumentos. Use IP_engine IP_weather maxJugadores tiempoPartida'
-
+SOCK_CLOSE = ''
+ERR_WEATHER = '[SOCKET] Hubo un error al conectar con el servidor de tiempo'
+BD_CONNECTION = "[BD] Connected to MongoDB successfully!!!"
+BD_ERR = "[BD] Could not connect to MongoDB"
+BD_CLOSE = '[BD] Close connection'
+UNSAVED_MATCH = "[PARTIDA] No existe una partida guardada. Se procede a crear una partida nueva"
+ERR_ARGS = '[ARGS] Uso incorrecto de argumentos. Use IP_engine IP_weather maxJugadores tiempoPartida'
+ERR_MATCH = "[PARTIDA] ERROR. LA PARTIDA NO PUEDE COMENZAR"
 
 colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
 
@@ -330,7 +336,7 @@ def sendWeather(AA_Weather):
     try:
         conn = socket.socket()
     except socket.error as err:
-        print('Socket error because of %s' %(err))
+        print('[SOCKET] Socket error because of %s' %(err))
 
     try:
         conn.connect((AA_Weather.getIp(), AA_Weather.getPort()))
@@ -341,7 +347,7 @@ def sendWeather(AA_Weather):
         while i < NUM_CITIES:
             conn.send('send city'.encode())
             city = conn.recv(1024).decode()
-            print(f'City received -> {city}')
+            print(f'[SOCKET] City received -> {city}')
 
             if json.loads(city) not in cities:
                 cities.append(json.loads(city))
@@ -349,12 +355,11 @@ def sendWeather(AA_Weather):
         
         conn.send('ok'.encode())
        
-       
     except: 
         if socket.gaierror:
-            print('There was an error while resolving the host')
+            print('[SOCKET] There was an error while resolving the host')
         else:
-            print('Hubo un error al conectar con el servidor de tiempo')    
+            print(ERR_WEATHER)    
         conn.close()
         return False
 
@@ -413,9 +418,9 @@ def autentificarJugador(player):
 
     try:
         conn = MongoClient('mongodb://mongodb')
-        print("Connected to MongoDB successfully!!!")
+        print(BD_CONNECTION)
     except:  
-        print("Could not connect to MongoDB")
+        print(BD_ERR)
         return False
 
     db = conn.gameDB
@@ -515,13 +520,14 @@ def escucharMovimientos(Broker):
     for message in consumer:
         finTiempo = False
         message = message.value
-        print('{} movimiento registrado!'.format(message))
+        
         try:
             direccion = message['move']
             alias = message['alias']
         except:
             finTiempo = message['finTiempo']
         if (message['codigoPartida'] == codigoPartida or message['codigoPartida'] == 'NPC'):
+            print('[KAFKA] {}'.format(message))
             if finTiempo:
                 return
             jugador = buscarJugador(arrayJugadores, alias)
@@ -625,7 +631,7 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
         data = {'finTiempo' : True,
                 'codigoPartida' : codigoPartida}
     else:
-        print('ERROR EN FUNCION ENVIARMENSAJE')
+        print('[PARTIDA] ERROR EN FUNCION ENVIARMENSAJE')
 
     if cola != '':   
         producer.send(cola, value=data)
@@ -648,7 +654,7 @@ def finalizarPartidaPorTiempo(Broker):
 
 def handle_player(conn,addr):
 
-    print("Connection from: " + str(addr))
+    print("[SOCKET] Connection from: " + str(addr))
 
     global numJugadores
     jugador = autentificarJugador(conn)
@@ -681,6 +687,7 @@ def handle_player(conn,addr):
         conn.send(data.encode())
 
     conn.close()
+    print("[SOCKET] Closed connection: " + str(addr))
 
 def conexion_player(AA_Engine):
     ## Conexión AA_Player
@@ -697,6 +704,7 @@ def conexion_player(AA_Engine):
             thread.start()
 
     engine_socket.close()    
+    print('[SOCKET] Closed')
     return True
 
 def conexion_clima(AA_Weather):
@@ -763,27 +771,29 @@ def cargarPartida():
     
     try:
         conn = MongoClient('mongodb://mongodb')
-        print("Connected to MongoDB successfully!!!")
+        print(BD_CONNECTION)
         db = conn.gameDB
 
         try:
             db.validate_collection('partida')
         except pymongo.errors.OperationFailure:
-            print("No existe una partida guardada. Se procede a crear una partida nueva")
+            print(UNSAVED_MATCH)
             conn.close()
+            print(BD_CLOSE)
             return False
     except:  
-        print("Could not connect to MongoDB")
+        print(BD_ERR)
         return False
 
     try:
         collection = db.partida
         partida = collection.find_one({'codigoPartida' : codigoPartida})
         if (partida == None):
-            print("No existe una partida guardada. Se procede a crear una partida nueva")
+            print(UNSAVED_MATCH)
             conn.close()
             return False
-        else:    
+        else: 
+            print('[BD] Cargando partida ...')
             nuevaCiudad = cargarCiudad(partida, 'c1')
             mapa.ciudades[0][0] = nuevaCiudad
             nuevaCiudad = cargarCiudad(partida, 'c2')
@@ -801,21 +811,22 @@ def cargarPartida():
                 arrayJugadores.append(jugador)
 
             jugadoresVivos = partida['jugadoresVivos']
-            codigoPartida = partida['codigoPartida']    
-
+            codigoPartida = partida['codigoPartida']     
             conn.close()
+            print(BD_CLOSE)
     except:
-        print("Error al cargar la partida")
+        print("[BD] Error al cargar la partida")
         conn.close()
+        print(BD_CLOSE)
 
     return True             
 
 def guardarPartida():
     try:
         conn = MongoClient('mongodb://mongodb')
-        print("Connected to MongoDB successfully!!!")
+        print(BD_CONNECTION)
     except:  
-        print("Could not connect to MongoDB")
+        print(BD_ERR)
         return False
 
     db = conn.gameDB
@@ -831,13 +842,16 @@ def guardarPartida():
                 'codigoPartida' : codigoPartida
            }
     collection.insert_one(data)
+    print('[BD] Guardando partida ...')
     conn.close()
+    print(BD_CLOSE)
 
 def borrarPartidaGuardada():
     try:
         conn = MongoClient('mongodb://mongodb')
+        print(BD_CONNECTION)
     except:  
-        print("Could not connect to MongoDB")
+        print(BD_ERR)
         return False
 
     db = conn.gameDB
@@ -846,10 +860,12 @@ def borrarPartidaGuardada():
         db.validate_collection('partida')
         db.partida.delete_one({'codigoPartida' : codigoPartida})
     except pymongo.errors.OperationFailure:
-        print("No se puede borrar partida ")
+        print("[PARTIDA] No se puede borrar partida ")
         conn.close()
-        return                  
-
+        print(BD_CLOSE)
+        return
+    print('[BD] Borrando partida ...')                 
+    print(BD_CLOSE)
     conn.close()
 
 def generarPartida(AA_Weather):
@@ -918,7 +934,7 @@ def main():
         comenzar = True
     else:
         ##Esperamos que los jugadores se conecten
-        print('ESPERANDO JUGADORES')
+        print('[PARTIDA] ESPERANDO JUGADORES')
         conexion_player(AA_Engine)
         comenzar = generarPartida(AA_Weather)
     
@@ -927,7 +943,7 @@ def main():
     ##Creamos la partida y empezamos a jugar
         comenzarPartida()
     else:
-        print("ERROR. LA PARTIDA NO PUEDE COMENZAR")
+        print(ERR_MATCH)
         Broker = Modulo('Broker')
         Broker.setIPfromJson('Broker')    
         enviarMensaje(Broker,'broadcast', 'finTiempo')
