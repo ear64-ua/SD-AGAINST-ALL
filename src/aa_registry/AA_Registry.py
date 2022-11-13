@@ -6,6 +6,9 @@ import json
 from pymongo import MongoClient   
 import pymongo
 from classes import Modulo
+
+BD_CONNECTION = "[BD] Connected to MongoDB successfully!!!"
+BD_ERR = "[BD] Could not connect to MongoDB"
 # Busca si el alias de un jugador existe en la base de datos
 def findPlayer(collection,data):
 
@@ -26,9 +29,9 @@ def mongoInsert(data):
 
     try:
         conn = MongoClient('mongodb://mongodb')
-        print("Connected to MongoDB successfully!!!")
+        print(BD_CONNECTION)
     except:  
-        print("Could not connect to MongoDB")
+        print(BD_ERR)
         return False
 
     db = conn.gameDB
@@ -45,7 +48,9 @@ def mongoInsert(data):
         print(e)
         return False
 
-    print('Inserted!')
+    print('[BD] Inserted!')
+    conn.close()
+    print('[BD] Closed')
     return True
 
 # Actualiza los datos del jugador en la base de datos
@@ -53,9 +58,9 @@ def mongoUpdate(oldData, newData):
 
     try:
         conn = MongoClient('mongodb://mongodb')
-        print("Connected to MongoDB successfully!!!")
+        print(BD_CONNECTION)
     except:  
-        print("Could not connect to MongoDB")
+        print(BD_ERR)
         return False
 
     db = conn.gameDB
@@ -81,7 +86,9 @@ def mongoUpdate(oldData, newData):
         print(e)
         return False
 
-    print('Updated!')
+    print('[BD] Updated!')
+    conn.close()
+    print('[BD] Closed')
     return True
 
 # Opción de insertar en la base de datos
@@ -125,13 +132,13 @@ def main():
     # puede escuchar hasta a 4 jugadores
     register_socket.listen(4)
 
-    print(f'Waiting for someone to register...{[ip,AA_Registry.getPort()]} ')
+    print(f'[SOCKET] Waiting for someone to register...{[ip,AA_Registry.getPort()]} ')
 
     while(True):
 
         # conectamos con el cliente
         c, address = register_socket.accept()  
-        print("Connection from: " + str(address))
+        print("[SOCKET] Connection from: " + str(address))
 
         # decodifica los datos enviados para que se puedan leer y procesar
         option = c.recv(1024).decode()
@@ -142,6 +149,7 @@ def main():
             updating(c)
 
         c.close()
+        print('[SOCKET] Closed connection: ' + str(address))
 
 
 if __name__ == "__main__":

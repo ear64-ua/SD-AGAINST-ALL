@@ -261,6 +261,8 @@ Finalmente resultó que, al corregir el primer problema, el segundo desaparecía
 
 **Problema 6**: (Resiliencia). Este problema surge ante la imposibilidad de utilizar sockets entre la aplicación AA_Player y AA_Engine, salvo para la identificación inicial. Utilizando un socket, la detección de caída del servidor es inmediata, ya que no puede establecer la conexión. Al depender únicamente de Kafka, tuvimos que solucionar el problema mediante el sistema de ACKs descritos en la parte de resiliencia.
 
+**Problema 7**: (Escalabilidad). Al toparnos con la escalabilidad de los servicios, nos dimos cuenta de que no podíamos asignar IP's estáticas o puertos a los contenedores si queríamos desplegar varios de ellos. Para ello hemos dejado que __docker__ sea el que nos asigne automáticamente las IP's de los servicios que sean desplegados. Estas direcciones asignadas serán recogidas por el script que hace correr el servicio que escojamos.
+
 # Componentes software
 
 ## AA_Registry
@@ -718,56 +720,38 @@ Cuando el módulo se vuelve a arrancar, este comprueba si hay una partida guarda
 - Los factores de clima permanecen constantes durante toda la partida
 - Los factores de clima se deben almacenar en base de datos, junto con el nivel y posición del jugador, por si el AA_Engine cae, y tiene que recuperar la partida
 
-# Steps:
+# Requirements
 
-1.  Install [docker](https://www.docker.com/products/docker-desktop/)
-2.  Install [offset explorer 2](https://www.kafkatool.com/download.html)
-3.  Install [mongoDB compass](https://www.mongodb.com/try/download/compass), [mongosh](https://www.mongodb.com/docs/mongodb-shell/install/) 
-    and [mongodb-community](https://www.mongodb.com/docs/manual/administration/install-community/)
-4.  Run docker-compose up -d
-5.  Test
+Install [docker](https://www.docker.com/products/docker-desktop/)
 
 # Despliegue
 
-``docker compose up --build -d --scale aa_player=x``
+``./run.sh``
 
 ## Correr servicios
 
 #### AA_Engine
-``docker exec -it aa_engine bin/sh``
+``./run_engine``
 
 #### AA_Weather
-``docker exec -it aa_weather bin/sh``
+``./run_weather``
 
 #### AA_Registry
-``docker exec -it aa_registry bin/sh``
+``./run_registry``
 
 #### AA_Player
-``docker exec -it src-aa_player-x bin/sh``
+``./run_player``
 
 #### AA_NPC
-``docker exec -it src-aa_npc-x bin/sh``
+``./run_npc``
 
 ## Parar servicios
 
-``docker compose stop``
+``./stop.sh``
 
 ## Eliminar servicios
 
-``docker compose rm -f``
-
-## Listar contenedores
-``docker ps``
-
-## Listar redes
-``docker network ls``
-
-## Inspeccionar red
-``docker network inspect my_net``
-
-``docker inspect --format='{{.Name}} - {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -aq)``
-
-
+``./clean.sh``
 
 
 

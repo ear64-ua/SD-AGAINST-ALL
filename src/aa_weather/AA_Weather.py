@@ -44,7 +44,7 @@ def chooseCity():
 def main():
 
     if len(sys.argv[1:]) < 1:
-        print('Uso incorrecto de argumentos. Use IP_Weather')
+        print('[ARGS] Uso incorrecto de argumentos. Use IP_Weather')
         return -1
     args = sys.argv[1:]
 
@@ -57,7 +57,7 @@ def main():
 
     conn.listen(2)
 
-    print(f' AA_Weather listening for AA_Engine petition...{[AA_Weather.getIp(),AA_Weather.getPort()]} ')
+    print(f'[SOCKET] AA_Weather listening for AA_Engine petition...{[AA_Weather.getIp(),AA_Weather.getPort()]} ')
 
     while True:
         engine, address = conn.accept()  
@@ -65,7 +65,7 @@ def main():
         # si se envía una ciudad repetida, se vuelve a enviar otra
         while peticion != 'ok':
             peticion = engine.recv(1024).decode()
-            print("Petition received from: " + str(address) + '-> ' + peticion )
+            print("[SOCKET] Petition received from: " + str(address) + '-> ' + peticion )
             city = json.dumps(chooseCity())
             engine.send(city.encode())
 
