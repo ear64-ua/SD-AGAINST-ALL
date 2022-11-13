@@ -211,9 +211,10 @@ Hay un mensaje especial de control de final de partida por tiempo, en el que el 
         data = {'finPartida': True,
                 'codigoPartida' : codigoPartida}
 
- El primer mensaje contiene un string con el mapa del mundo, y se utiliza para que los jugadores puedan imprimir el mapa del mundo. El segundo mensaje contiene un booleano que avisa de que la partida ha finalizado, y sirve para poder salir de los hilos y cerrar la aplicación AA_Player correctamente.
+ El primer mensaje contiene un string con el mapa del mundo, y se utiliza para que los jugadores puedan imprimir el mapa del mundo.  
+ El segundo mensaje contiene un booleano que avisa de que la partida ha finalizado, y sirve para poder salir de los hilos y cerrar la aplicación AA_Player correctamente.
 
-3. estadoJugador: Este topic sirve para varias cosas: comunicar que un jugador ha muerto, coordinar el inicio y final de partida, reanudar una partida, y enviar ACKs de servidor online a los jugadores. Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber tres tipos de mensajes:
+3. estadoJugador: Este topic sirve para varias cosas: comunicar que un jugador ha muerto, coordinar el inicio y final de partida, reanudar una partida (resiliencia), y enviar ACKs de servidor online a los jugadores (resiliencia). Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber tres tipos de mensajes:
 
         data = {'alias' : jugador.alias,
                 'nivelReal' : jugador.nivelReal,
@@ -227,15 +228,15 @@ Hay un mensaje especial de control de final de partida por tiempo, en el que el 
                 'numMovimiento' : numMovimiento,
                 'codigoPartida' : codigoPartida }
 
-El primer mensaje contiene el jugador al que va dirigido el mensaje, y el nivel del jugador, que siempre va a ser -99, indicándole así que debe salir del juego.  
+El primer mensaje representa la muerte de un jugador. Contiene el jugador al que va dirigido el mensaje, y el nivel del jugador, que siempre va a ser -99, indicándole así que debe salir del juego.  
 El segundo mensaje es de broadcast, y va dirigido a todos los jugadores. El contenido del mensaje puede ser 'inicioPartida', 'reanudarPartida' o 'finPartida'. La primera opción indica a los jugadores que ya está todo preparado para iniciar la partida, y pueden empezar a leer mensajes de los dos topics. La segunda opción la veremos en el apartado de Resiliencia. La tercera opción indica que la partida ha terminado, y el único jugador que queda vivo mostrará un mensaje de victoria.  
 El tercer mensaje es un ACK para que el jugador sepa que el servidor está funcionando. Lo veremos más detallado en la parte de resiliencia.
 
 # Problemas encontrados y soluciones aplicadas
 
-El primer problema que encontramos es que, cuando los jugadores tenían que leer los mensajes de los topics, cada mensaje era leído únicamente por uno de los jugadores. Al investigar, descubrimos que este fenómeno se producía porque todos los jugadores formaban parte del mismo grupo de lectura. Esto es un funcionamiento totalmente normal de kafka, pensado para facilitar la escalabilidad de las aplicaciones. El funcionamiento es que, cuando hay varias aplicaciones funcionando simultáneamente, por motivos de escalabilidad y tolerancia a fallos, solamente una de las aplicaciones del grupo leerá el mensaje. El resto no, para evitar que una misma tarea se repita varias veces. Así pues, para solucionar el problema, solamente tuvimos que no configurar el grupo al inicializar los diferentes objetos KafkaConsumer que hay en la práctica. De esta forma, la librería Kafka-python configura los objetos con un grupo distinto para cada uno.
+**Problema 1**: El primer problema que encontramos es que, cuando los jugadores tenían que leer los mensajes de los topics, cada mensaje era leído únicamente por uno de los jugadores. Al investigar el fallo, descubrimos que este fenómeno se producía porque todos los jugadores formaban parte del mismo grupo de lectura. Esto es un funcionamiento totalmente normal de kafka, pensado para facilitar la escalabilidad de las aplicaciones. El funcionamiento es que, cuando hay varias aplicaciones funcionando simultáneamente, por motivos de escalabilidad y tolerancia a fallos, solamente una de las aplicaciones del grupo leerá el mensaje. El resto no, para evitar que una misma tarea se repita varias veces. Así pues, para solucionar el problema, solamente tuvimos que __no definir el grupo__ al inicializar los diferentes objetos KafkaConsumer que hay en la práctica. De esta forma, la librería Kafka-python configura los objetos con un grupo distinto para cada uno.
 
-Otro problema encontrado con Kafka en las primeras iteraciones de la práctica, correspondió a partidas que se juegan sucesivamente. El problema es que, precisamente por la configuración de grupos definida para solucionar el mensaje anterior, existe la posibilidad de que haya mensajes de partidas anteriores en el topic, que deban ser ignorados por los jugadores de una partida nueva. Existen varias formas de abordar la solución, y hemos tenido que implementar dos de ellas, porque en algunas situaciones había errores. La primera forma consiste en usar la función seek_to_end() de la librería de kafka-python, y definiendo el consumidor de la siguiente manera:
+**Problema 2**: Otro problema encontrado con Kafka en las primeras iteraciones de la práctica, correspondió a partidas que se juegan sucesivamente. El problema es que, precisamente por la configuración de grupos definida para solucionar el mensaje anterior, existe la posibilidad de que haya mensajes de partidas anteriores en el topic, que deban ser ignorados por los jugadores de una partida nueva. Existen varias formas de abordar la solución, y hemos tenido que implementar dos de ellas, porque en algunas situaciones había errores. La primera forma consiste en usar la función seek_to_end() de la librería de kafka-python, y definiendo el consumidor de la siguiente manera:
 
 ```python     
     assignments = []
@@ -250,8 +251,15 @@ Con este ajuste, leemos únicamente el último mensaje del topic 'mapa', ignoran
 
 Esta solución no la pudimos emplear en el topic de estadoJugador, pues se comía el mensaje de broadcast de iniciar partida, así que hubo que definir algunas variables de control para ignorar todos los mensajes que no fueran el de 'broadcast' inicial.
 
-Finalmente resultó que, al corregir el primer problema, el segundo desaparecía, por lo que no hay nada de esto en el código de la práctica. Pero hemos querido reseñarlo para ilustrar esta casuística que se puede producir en otras aplicaciones
+Finalmente resultó que, al corregir el primer problema, el segundo desaparecía, por lo que no hay nada de esto en el código de la práctica. Pero hemos querido reseñarlo para ilustrar esta casuística que se puede producir en otras aplicaciones.
 
+**Problema 3**: Un tercer problema encontrado fue que no éramos capaces de finalizar los programas al acabar las partidas, pues las distintas aplicaciones se quedaban activas indefinidamente, leyendo los topics de kafka. Resolvimos este problema mediante mensajes de coordinación (broadcast), que activan ciertas variables de control que se encargan de forzar el cierre del topic y finalizar el hilo de escucha. Especiamente complicado fue el cierre automático del hilo de captura de movimientos por parte del jugador humano. Barajamos el uso de algunas librerías de python, que implementan un input() con un timer, pero no nos gustaba el funcionamiento. Al final, la decisión tomada fue mostrar un mensaje de fin de partida por pantalla, e invitar al jugador a que pulse la tecla intro para salir.
+
+**Problema 4**: Este problema está relacionado con los NPCs. Estos jugadores no humanos se identifican por una cadena con el formato n_NPC, siendo n el nivel del NPC generado. El problema es que sólo podíamos tener un NPC de cada nivel en el juego, y en cuanto se generasen 7-8 NPCs, coincidirían el nombre y se producirían colisiones en los movimientos. Solventamos este problema generando un número aleatorio entre 1 y mil millones, que se añade al final de la cadena, haciendo así que los NPCs sean únicos.
+
+**Problema 5**: (Resiliencia). Este problema está relacionado con el código de partida que se genera al principio de cada ejecución. Al principio identificábamos la partida mediante un código aleatorio (como en los NPCs del problema 4), pero entonces nos dimos cuenta de que un servidor que se recuperaba tras una caída no iba a ser capaz de encontrar la partida que estaba ejecutando antes de la caída. La solución fue utilizar la IP del servidor como identificador de partida. Como al hacer el despliegue, se asignan IPs fijas, cada vez que un servidor se recupera, es capaz de mirar su IP y ver si hay alguna partida guardada en base de datos, y continuar con ella.
+
+**Problema 6**: (Resiliencia). Este problema surge ante la imposibilidad de utilizar sockets entre la aplicación AA_Player y AA_Engine, salvo para la identificación inicial. Utilizando un socket, la detección de caída del servidor es inmediata, ya que no puede establecer la conexión. Al depender únicamente de Kafka, tuvimos que solucionar el problema mediante el sistema de ACKs descritos en la parte de resiliencia.
 
 # Componentes software
 
@@ -663,6 +671,9 @@ El segundo hilo está indefinidamente leyendo el topic de **kafka** que contiene
             - borra la partida grabada anterior (Resiliencia)
             - graba la nueva partida (Resiliencia)   
 ```
+
+## AA_NPC
+
 
 ## Consideraciones cuando un jugador entra en una partida
 
