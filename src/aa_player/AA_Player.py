@@ -5,7 +5,6 @@ import json
 import threading
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
-from kafka import TopicPartition
 from time import sleep
 from json import dumps
 from json import loads
@@ -54,7 +53,6 @@ class Modulo:
 
 def leerMapa(Broker):
     global jugadorVivo
-    global partidaIniciada
 
     consumer = KafkaConsumer(
     'mapa',

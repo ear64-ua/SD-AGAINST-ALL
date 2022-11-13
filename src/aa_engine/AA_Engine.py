@@ -198,7 +198,6 @@ class Mapa:
             if (jugador.tipo == 'PC'):
                 jugador.incrementarNivel()
             self.colocarJugador(jugador)
-##            data = generarMensajeEstado(jugador)
         elif casillaDestino == 'M':
             if (jugador.tipo == 'PC'):
                 jugador.matar()
@@ -227,18 +226,17 @@ class Mapa:
 
             if (encontrado):
                 if(jugador.nivelReal > jugador2.nivelReal):
+                    ##Mato al jugador 2
                     jugador2.matar()
                     if jugador2.tipo == 'PC':
                         jugadoresVivos = jugadoresVivos - 1
                     data = generarMensajeEstado(jugador2)
-                    print("El jugador 1 gana")
                     ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto 
                 elif(jugador.nivelReal < jugador2.nivelReal):
                     ##Mato al jugador 1
                     jugador.matar()
                     if jugador.tipo == 'PC':
                         jugadoresVivos = jugadoresVivos - 1
-                    print("El jugador 2 gana")
                     data = generarMensajeEstado(jugador)
                 else:
                     print("Empate")
@@ -691,15 +689,9 @@ def conexion_player(AA_Engine):
 
     while numJugadores < maxJugadores:        
         if (threading.active_count() - 1 < maxJugadores - numJugadores):
-            print('7')
             conn, addr = engine_socket.accept()  
-            print('8')
             thread = threading.Thread(target=handle_player, args = (conn,addr))
             thread.start()
-
-    #        handle_player(conn,addr)
-
-            print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
     engine_socket.close()    
     return True
