@@ -217,7 +217,7 @@ class Mapa:
             else:
                 self.colocarJugador(jugador)            
         else:
-            if casillaDestino.isnumeric():
+            if str(casillaDestino).isnumeric():
                 array = arrayNPCs
             else:
                 array = arrayJugadores        
