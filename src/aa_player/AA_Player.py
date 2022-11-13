@@ -128,8 +128,9 @@ def leerEstado(Broker):
         message = message.value 
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
-                if(message['numMovimiento'] == numMovimientos-1):
-                    ackRecibido = True
+                if 'numMovimiento' in message:
+                    if(message['numMovimiento'] == numMovimientos-1):
+                        ackRecibido = True
                 if(message['nivelReal'] == -99):
                     print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
                     jugadorVivo = False
