@@ -131,9 +131,12 @@ def leerEstado(Broker):
                 if 'numMovimiento' in message:
                     if(message['numMovimiento'] == numMovimientos-1):
                         ackRecibido = True
-                if(message['nivelReal'] == -99):
-                    print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
-                    jugadorVivo = False
+                else:        
+                    if(message['nivelReal'] == -99):
+                        print('HAS MUERTO. PULSA LA TECLA INTRO PARA SALIR')
+                        jugadorVivo = False
+                    else:
+                        print('[DATOS] ' + str(message['alias']) + ' ' + str(message['avatar']) + ' Nivel: ' + str(message['nivelReal']) + '. Ciudad: ' + str(message['ciudad']) + '. Posicion: [' + str(message['posY'] + 1) + ',' + str(message['posX'] + 1) + ']')   
             if (message['alias'] == 'broadcast'):
                 if (message['estadoPartida'] == 'inicioPartida'):
                     #Esto es para que no salga el mensaje cuando se recupera la partida de un error del servidor

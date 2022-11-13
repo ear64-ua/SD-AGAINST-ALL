@@ -200,13 +200,14 @@ class Mapa:
         data = ''
         ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
         casillaDestino = ciudad.casillas[jugador.posX][jugador.posY]
-        print("Casilla Destino = " + casillaDestino)
         if casillaDestino == '.':
             self.colocarJugador(jugador)
+            data = generarMensajeEstado(jugador)
         elif casillaDestino == 'A':
             if (jugador.tipo == 'PC'):
                 jugador.incrementarNivel()
             self.colocarJugador(jugador)
+            data = generarMensajeEstado(jugador)
         elif casillaDestino == 'M':
             if (jugador.tipo == 'PC'):
                 jugador.matar()
@@ -545,7 +546,7 @@ def escucharMovimientos(Broker):
                     data = mapa.analizarChoqueJugador(jugador)
                     
                     if data != '':
-                        ##Envio el estado de los jugadores implicados en el movimiento
+                        ##Envio el estado del jugador implicado en el movimiento
                         enviarMensaje(Broker, 'estadoJugador', data)
                     ##Envio el mensaje de final de partida cuando solo queda un jugador vivo    
                     if (jugadoresVivos == 1):
@@ -585,9 +586,14 @@ def escucharMovimientos(Broker):
 
 
 def generarMensajeEstado(jugador):
+    ciudad = mapa.ciudades[jugador.ciudadX][jugador.ciudadY]
     data = {'alias' : jugador.alias,
            'nivelReal' : jugador.nivelReal,
-           'codigoPartida' : codigoPartida
+           'codigoPartida' : codigoPartida,
+            'avatar' : jugador.avatar,
+           'ciudad' : ciudad.nombre,
+           'posX' : jugador.posX,
+           'posY' : jugador.posY
     }
     return data
 
