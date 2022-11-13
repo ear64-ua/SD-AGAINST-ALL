@@ -103,6 +103,7 @@ La clase jugador representa a los jugadores que intervienen en la partida. Se co
 - EF, EC: Modificadores de frío y calor, que se aplican según sea la temperatura de la ciudad en la que está el jugador.
 - Nivel: Nivel de combate del jugador. Sirve para decidir si el jugador gana o pierde, cuando se choca con otro jugador o NPC. Se incrementa cuando el jugador come un alimento, y se pone a -99 cuando el jugador muere, bien a manos de otro jugador, o bien porque ha pisado una mina.
 - NivelReal. Nivel efectivo del jugador, que resulta de aplicar el modificador de frío o calor al nivel del jugador.
+- Tipo. clase de jugador, que puede 'PC' (jugador humano) o 'NPC' (jugador artificial)
 
 
 ## Módulos
@@ -185,39 +186,56 @@ Para articular la comunicación de la práctica, definimos una partición con tr
 2. mapa
 3. estadoJugador
 
-Definimos la funcionalidad de los topics, así como la estructura de mensajes que contienen:
+Definimos la funcionalidad de los topics, así como la estructura de mensajes que contienen. **IMPORTANTE**. Todos los mensajes incluyen un identificador de partida. Este mensaje sirve para poder ejecutar varias partidas de forma simultánea, y que cada parte del sistema lea solamente los mensajes que corresponden a su partida. Hecha esta aclaración, pasamos a los topics:
 
 1. player_move: Este topic sirve para que las aplicaciones de jugador escriban el movimiento que desean hacer sobre el tablero. Las aplicaciones que pueden escribir en este topic son AA_Player y AA_NPC, y los mensajes son consumidos por AA_Engine. Sólo hay un tipo de mensaje válido, con la siguiente estructura:
 
 ```
-    data = {'alias': alias del jugador,
+    data = {'alias': alias del jugador que realiza el movimiento,
+            'codigoPartida': identificador de la partida en curso,
+            'numMovimiento': código del movimiento efectuado (funcionalidad de resiliencia)
             'move' : dirección hacia la que se mueve el jugador (N, S, E, W, NE, NW, SN, SW )
             }
+```
+Hay un mensaje especial de control de final de partida por tiempo, en el que el propio AA_Engine escribe en el topic, y consume su propio mensaje. Este mensaje tiene la siguiente estructura:
+```
+        data = {'finTiempo' : True,
+                'codigoPartida' : codigoPartida}
 ```
 
 2. mapa: Este topic sirve para que los jugadores puedan mostrar por pantalla el mapa de juego. Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player que haya arrancadas. En el topic puede haber dos tipos de mensajes:
 
-        data = {'mapa': mapa}
+        data = {'mapa': mapa,
+                'codigoPartida' : codigoPartida}
 
-        data = {'finPartida': True}
+        data = {'finPartida': True,
+                'codigoPartida' : codigoPartida}
 
  El primer mensaje contiene un string con el mapa del mundo, y se utiliza para que los jugadores puedan imprimir el mapa del mundo. El segundo mensaje contiene un booleano que avisa de que la partida ha finalizado, y sirve para poder salir de los hilos y cerrar la aplicación AA_Player correctamente.
 
-3. estadoJugador: Este topic sirve para dos cosas: comunicar que un jugador ha muerto, y coordinar el inicio y final de partida. Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber dos tipos de mensajes:
+3. estadoJugador: Este topic sirve para varias cosas: comunicar que un jugador ha muerto, coordinar el inicio y final de partida, reanudar una partida, y enviar ACKs de servidor online a los jugadores. Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber tres tipos de mensajes:
 
-        data = {'alias': alias del jugador,
-                'nivelReal': nivel del jugador}
+        data = {'alias' : jugador.alias,
+                'nivelReal' : jugador.nivelReal,
+                'codigoPartida' : codigoPartida }
 
-        data = {'broadcast': mensaje de broadcast}
+        data = {'broadcast': mensaje de broadcast,
+                'codigoPartida' : codigoPartida}
+
+        data = {'alias' : jugador.alias,
+                'nivelReal' : jugador.nivelReal,
+                'numMovimiento' : numMovimiento,
+                'codigoPartida' : codigoPartida }
 
 El primer mensaje contiene el jugador al que va dirigido el mensaje, y el nivel del jugador, que siempre va a ser -99, indicándole así que debe salir del juego.  
-El segundo mensaje es de broadcast, y va dirigido a todos los jugadores. El contenido del mensaje puede ser 'inicioPartida' o 'finPartida'. La primera opción indica a los jugadores que ya está todo preparado para iniciar la partida, y pueden empezar a leer mensajes de los dos topics. La segunda opción indica que la partida ha terminado, y el único jugador que queda vivo mostrará un mensaje de victoria.
+El segundo mensaje es de broadcast, y va dirigido a todos los jugadores. El contenido del mensaje puede ser 'inicioPartida', 'reanudarPartida' o 'finPartida'. La primera opción indica a los jugadores que ya está todo preparado para iniciar la partida, y pueden empezar a leer mensajes de los dos topics. La segunda opción la veremos en el apartado de Resiliencia. La tercera opción indica que la partida ha terminado, y el único jugador que queda vivo mostrará un mensaje de victoria.  
+El tercer mensaje es un ACK para que el jugador sepa que el servidor está funcionando. Lo veremos más detallado en la parte de resiliencia.
 
 # Problemas encontrados y soluciones aplicadas
 
-El primer problema que encontramos es que, cuando los jugadores tenían que leer los mensajes de los topics, cada mensaje era leído únicamente por uno de los jugadores. Al investigar, descubrimos que este fenómeno se producía porque todos los jugadores formaban parte del mismo grupo de lectura. Esto es un funcionamiento totalmente normal de kafka, pensado para facilitar la escalabilidad de las aplicaciones. El funcionamiento es que, cuando hay varias aplicaciones funcionando simultáneamente, por motivos de escalabilidad y tolerancia a fallos, solamente una de las aplicaciones del grupo leerá el mensaje. El resto no, para evitar que una misma tarea se repita varias veces. Así pues, para solucionar el problema, solamente tuvimos que asignar un grupo diferente a cada uno de los jugadores y NPCs. De esta forma, el mensaje está disponible para todas las aplicaciones.
+El primer problema que encontramos es que, cuando los jugadores tenían que leer los mensajes de los topics, cada mensaje era leído únicamente por uno de los jugadores. Al investigar, descubrimos que este fenómeno se producía porque todos los jugadores formaban parte del mismo grupo de lectura. Esto es un funcionamiento totalmente normal de kafka, pensado para facilitar la escalabilidad de las aplicaciones. El funcionamiento es que, cuando hay varias aplicaciones funcionando simultáneamente, por motivos de escalabilidad y tolerancia a fallos, solamente una de las aplicaciones del grupo leerá el mensaje. El resto no, para evitar que una misma tarea se repita varias veces. Así pues, para solucionar el problema, solamente tuvimos que no configurar el grupo al inicializar los diferentes objetos KafkaConsumer que hay en la práctica. De esta forma, la librería Kafka-python configura los objetos con un grupo distinto para cada uno.
 
-Otro problema encontrado con Kafka, corresponde a partidas que se juegan sucesivamente. El problema es que, precisamente por la configuración de grupos definida para solucionar el mensaje anterior, existe la posibilidad de que haya mensajes de partidas anteriores en el topic, que deban ser ignorados por los jugadores de una partida nueva. Existen varias formas de abordar la solución, y hemos tenido que implementar dos de ellas, porque en algunas situaciones había errores. La primera forma consiste en usar la función seek_to_end() de la librería de kafka-python, y definiendo el consumidor de la siguiente manera:
+Otro problema encontrado con Kafka en las primeras iteraciones de la práctica, correspondió a partidas que se juegan sucesivamente. El problema es que, precisamente por la configuración de grupos definida para solucionar el mensaje anterior, existe la posibilidad de que haya mensajes de partidas anteriores en el topic, que deban ser ignorados por los jugadores de una partida nueva. Existen varias formas de abordar la solución, y hemos tenido que implementar dos de ellas, porque en algunas situaciones había errores. La primera forma consiste en usar la función seek_to_end() de la librería de kafka-python, y definiendo el consumidor de la siguiente manera:
 
 ```python     
     assignments = []
@@ -230,12 +248,116 @@ Otro problema encontrado con Kafka, corresponde a partidas que se juegan sucesiv
 
 Con este ajuste, leemos únicamente el último mensaje del topic 'mapa', ignorando todos los demás, que no tenemos que leer por ser mapas antiguos.
 
-Esta solución no la pudimos emplear en el topic de estadoJugador, pues se comía el mensaje de broadcast de iniciar partida, así que hubo que definir algunas variables de control para ignorar todos los mensajes que no fueran el de broadcast inicial.
+Esta solución no la pudimos emplear en el topic de estadoJugador, pues se comía el mensaje de broadcast de iniciar partida, así que hubo que definir algunas variables de control para ignorar todos los mensajes que no fueran el de 'broadcast' inicial.
+
+Finalmente resultó que, al corregir el primer problema, el segundo desaparecía, por lo que no hay nada de esto en el código de la práctica. Pero hemos querido reseñarlo para ilustrar esta casuística que se puede producir en otras aplicaciones
 
 
-## Jugador
+# Componentes software
 
-El jugador (*AA_Player*) será el que podrá registrarse en la base de datos, actualizar sus datos o conectarse a una partida.
+## AA_Registry
+
+Este módulo se encarga de almacenar los datos de un jugador en base de datos.
+
+Estará indefinidamente escuchando conexiones entrantes del módulo *AA_Player* y dependiendo de la petición recibida, podrá insertar un nuevo jugador en base de datos, o editar uno existente
+
+````python
+while(True):
+
+    # conectamos con el cliente
+    c, address = register_socket.accept()  
+    print("Connection from: " + str(address))
+
+    # decodifica los datos enviados para que se puedan leer y procesar
+    option = c.recv(1024).decode()
+    if option == 'insert':
+        inserting(c)
+    
+    elif option == 'update':
+        updating(c)
+
+    c.close()
+````
+Los datos recibidos serán del tipo string, que convertiremos al formato **JSON**. Se enviará un mensaje acerca del estado final de la consulta:
+
+````python
+    dataReceived = c.recv(1024).decode()
+    
+    dataJson = json.loads(dataReceived)
+````
+
+````python
+    if mongoInsert(dataJson):
+        c.send('Inserted succesfully !'.encode())
+    else:
+        c.send('Error while inserting !'.encode())
+````
+
+````python
+    if mongoUpdate(dataJson):
+        c.send('Updated succesfully !'.encode())
+    else:
+        c.send('Error while inserting !'.encode())
+````
+
+La base de datos usada es MongoDB (nombrada gameBD) conectándose de la siguiente manera a la BD:
+````python
+try:
+    conn = MongoClient()
+    print("Connected to MongoDB successfully!!!")
+except:  
+    print("Could not connect to MongoDB")
+    return False
+
+db = conn.gameDB
+collection = db.players
+````
+
+- Insertar/Registrar usuario. Siempre que **no exista** un usuario con el **mismo nombre**, se podrá registrar un jugador.
+    ````python
+    # Si no ha encontrado a nadie con el mismo alias, inserta
+    if findPlayer(collection,{'alias' : data['alias']}):
+       return False
+
+    try:
+       collection.insert_one(data)
+    
+    except pymongo.errors.PyMongoError as e:
+       print(e)
+       return False
+    
+    print('Inserted!')
+    return True
+    ````
+- Actualizar. Se podrá actualizar un usuario **si y sólo si existe** en la base de datos
+    ````python
+    try:
+        # buscamos al jugador con el mismo alias y password, y actualizamos el password
+        result = collection.find_one_and_update(
+            {
+                'alias': oldData['alias'],
+                'password': oldData['password']
+            },
+            {'$set': { 
+                'password':newData['password']
+                }
+            }
+        ) 
+        # si no se ha actualizado ningún registro, devuelve error
+        if result == None or not result.matched_count > 0:
+            return False
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    print('Updated!')
+    return True
+    ````
+
+## AA_Player
+
+El módulo de jugador será el que podrá registrarse en la base de datos, actualizar sus datos o conectarse a una partida, para jugar.
 
 Al principio del programa, se le mostrará un menú con las distintas opciones
 
@@ -329,132 +451,49 @@ def conectarPartida(Broker, AA_Engine):
 
 ```
 
-Si el jugador se ha logueado sin problemas, podrá empezar con la partida enviando produciendo unos movimientos, que serán W (west) , S (south), E (east), N (north). El envío se realizará mediante el servicio **Kafka** y habrá un tiempo de espera hasta introducir el siguiente movimiento.
+### Jugar partida
+
+Si el jugador se ha identificado correctamente, puede empezar la partida. Para ello, la aplicación utiliza tres hilos. Uno de estos hilos solicita al usuario el movimiento que desea realizar, y lo envía al servidor. Los otros dos hilos leen datos enviados por el servidor, y la aplicación procesa la información.
 
 ```python
-from kafka import KafkaProducer
-from time import sleep
-
-def jugarPartida(Broker):
-
-    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-                         value_serializer=lambda x: 
-                         json.dumps(x).encode('utf-8'))
-
-    while True:
-        data = {'move' : input('Choose your direction (E,W,S,N): ')}
-        producer.send('player_move', value=data)
-        sleep(5)
+    t1 = threading.Thread(target=insertarMovimiento, args = [Broker])
+    t2 = threading.Thread(target=leerMapa, args = [Broker])
+    t3 = threading.Thread(target=leerEstado, args = [Broker])
 ```
 
+Describimos cada uno de los hilos:
 
+- El hilo 'leerEstado' es el encargado de toda la lógica interna del programa. Para ello, lee los mensajes depositados por el servidor en el topic 'estadoJugador' de **Kafka**. Estos mensajes sirven para activar o desactivar las variables de control 'jugadorVivo', 'ackRecibido' y 'partidaIniciada', que se utilizan para arrancar y parar la aplicación, determinar si el servidor está funcionando, y decidir qué mensajes se muestran por pantalla al usuario. 
 
-`TODO: completar código y descripción con implementación final`
+- El hilo 'insertarMovimiento' es un bucle que lee de consola el movimiento que desea realizar el usuario. Las direcciones podrán ser N (arriba), S (abajo), E (derecha), W (izquierda), NE (arriba-derecha), NW (arriba-izquierda), SE (abajo-derecha), SW (abajo-izquierda). El envío se realizará mediante el topic 'player_move' de **Kafka** y habrá un tiempo de espera de un segundo hasta que se pueda introducir el siguiente movimiento.
 
+```python
+        data = {'alias': alias,
+                'codigoPartida' : codigoPartida,
+                'numMovimiento' : numMovimientos,
+                'move' : input()}       
+        if(jugadorVivo and partidaIniciada):        
+            producer.send('player_move', value=data)
+```
 
-## Registro
+Adicionalmente, el hilo es capaz de verificar si el servidor está funcionando o no. Si el servidor no está activo, muestra un mensaje informativo por pantalla y no envía ningún movimiento al servidor. Detallamos este funcionamiento en profundidad, en el apartado de Resiliencia.
 
-El registro (*AA_Registry.py*) se encarga de almacenar los datos de un jugador.
+- El hilo 'leerMapa' se encarga de leer el mapa y mostrarlo por pantalla. La lectura se realiza en el topic 'mapa' de **Kafka**. Como detalle importante, es en este hilo donde se muestra al mensaje de "Elige tu movimiento". Está puesto aquí por motivos de claridad en la interfaz, ya que, si se ponía en el hilo 'insertarMovimiento', se mostraba primero el mensaje y luego el mapa, y el jugador podría no saber qué hacer a continuación. 
 
-Estará indefinidamente escuchando conexiones entrantes del módulo *AA_Player* y dependiendo de la petición recibida, procederá realizar una acción u otra
-````python
-while(True):
+```python
+    for message in consumer:
+            if(jugadorVivo):
+                message = message.value
+                if(message['codigoPartida']) == codigoPartida:
+                    if('mapa' in message):
+                        mapa = message['mapa']
+                        print(mapa)
+                        print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
+```
 
-    # conectamos con el cliente
-    c, address = register_socket.accept()  
-    print("Connection from: " + str(address))
+## AA_Weather
 
-    # decodifica los datos enviados para que se puedan leer y procesar
-    option = c.recv(1024).decode()
-    if option == 'insert':
-        inserting(c)
-    
-    elif option == 'update':
-        updating(c)
-
-    c.close()
-````
-Las opciones que tendrá un jugador serán de insertar un registro en la base de datos o actualizarlo. Los datos recibidos serán del tipo string, que convertiremos al formato **JSON**. Se enviará un mensaje acerca del estado final de la consulta:
-
-````python
-    dataReceived = c.recv(1024).decode()
-    
-    dataJson = json.loads(dataReceived)
-````
-
-````python
-    if mongoInsert(dataJson):
-        c.send('Inserted succesfully !'.encode())
-    else:
-        c.send('Error while inserting !'.encode())
-````
-
-````python
-    if mongoUpdate(dataJson):
-        c.send('Updated succesfully !'.encode())
-    else:
-        c.send('Error while inserting !'.encode())
-````
-
-La base de datos usada es MongoDB (nombrada gameBD) conectándose de la siguiente manera a la BD:
-````python
-try:
-    conn = MongoClient()
-    print("Connected to MongoDB successfully!!!")
-except:  
-    print("Could not connect to MongoDB")
-    return False
-
-db = conn.gameDB
-collection = db.players
-````
-
-- Insertar/Registrar usuario. Siempre que **no exista** un usuario con el **mismo nombre**, se podrá registrar un jugador.
-    ````python
-    # Si no ha encontrado a nadie con el mismo alias, inserta
-    if findPlayer(collection,{'alias' : data['alias']}):
-       return False
-
-    try:
-       collection.insert_one(data)
-    
-    except pymongo.errors.PyMongoError as e:
-       print(e)
-       return False
-    
-    print('Inserted!')
-    return True
-    ````
-- Actualizar. Se podrá actualizar un usuario **si y sólo si existe** en la base de datos
-    ````python
-    try:
-        # buscamos al jugador con el mismo alias y password, y actualizamos el password
-        result = collection.find_one_and_update(
-            {
-                'alias': oldData['alias'],
-                'password': oldData['password']
-            },
-            {'$set': { 
-                'password':newData['password']
-                }
-            }
-        ) 
-        # si no se ha actualizado ningún registro, devuelve error
-        if result == None or not result.matched_count > 0:
-            return False
-
-    except pymongo.errors.PyMongoError as e:
-        print(e)
-        return False
-
-    print('Updated!')
-    return True
-    ````
-
-
-## Clima
-
-El clima (*AA_Weather.py*) se encarga de estar a la espera de peticiones del engine (*AA_Engine.py*) para enviar una ciudad aleatoria de su base de datos.
+El servidor de clima se encarga de estar a la espera de peticiones del engine (*AA_Engine.py*) para enviar una ciudad aleatoria de su base de datos.
 
 Para la base de datos, se ha usado esta vez un archivo de JSON:
 ````json
@@ -516,17 +555,27 @@ def chooseCity():
     return data['ciudades'][indx]
 ````
 
-## Motor
+## AA_Engine
 
-El motor del juego (*AA_Engine*) se basa en implementar la lógica del juego y el servidor central de la comunicación entre procesos.
+El motor del juego se basa en implementar la lógica del juego y el servidor central de la comunicación entre procesos.
 
-En primer lugar, el servidor estará escuchando en un puerto para que los jugadores puedan conectarse. Una vez aceptadas las peticiones, se crearán varios hilos por cada conexión.
+Al arrancar el servidor, se realiza la carga de los parámetros de configuración desde un fichero externo, y se determina la IP del Engine, que servirá como código identificador de partida.  
+A continuación, el motor queda a la espera de la conexión de los jugadores. Esto se hace mediante un hilo, para poder aceptar varios jugadores de forma concurrente. La tecnología utilizada es sockets, y se ha implementando una lógica de control para impedir que se puedan conectar a la partida más jugadores que el máximo establecido:
 
 ```python
-conn, addr = engine_socket.accept()  
+def conexion_player(AA_Engine):
+    ## Conexión AA_Player
+    threading.current_thread()
+    engine_socket = socket.socket() 
+    engine_socket.bind((AA_Engine.getIp(), AA_Engine.getPort())) 
 
-thread = threading.Thread(target=handle_player, args = (conn,addr,Broker))
-thread.start()
+    engine_socket.listen()
+
+    while numJugadores < maxJugadores:        
+        if (threading.active_count() - 1 < maxJugadores - numJugadores):
+            conn, addr = engine_socket.accept()  
+            thread = threading.Thread(target=handle_player, args = (conn,addr))
+            thread.start()
 ```
 La función que se encargará de manejar dichos hilos, será `handle_player`, en donde se verificará la existencia del jugador en la base de datos. En caso de existir, se registrará al jugador en la partida, incrementando el número de jugadores conectados.
 
@@ -554,40 +603,66 @@ def handle_player(conn,addr,AA_Broker):
         conn.send(data.encode())
 
     conn.close()
-
 ```
-
-
 
 Cuando se ha alcanzado el límite de jugadores, la partida debe arrancar. Para ello, hay que generar el mapa de juego, que consiste en los siguientes pasos:
 - Generación de ciudades: Es un proceso en el que se realizan varias peticiones de información al servidor de clima. Este nos devuelve una ciudad y su temperatura asociada. Como tenemos que tener cuatro ciudades distintas, realizamos todas las peticiones que sean necesarias a este servidor, hasta tener esas ciudades no repetidas.
 - Colocación de jugadores: Colocamos a cada uno de los jugadores en una casilla aleatoria, de cualquier ciudad disponible.
 - Rellenado del mapa de ciudades: Para cada una de las ciudades, se genera un número aleatorio de alimentos y minas, y se colocan en el mapa, cuidando de no colocar ningún elemento en una casilla que ya esté ocupada.
 
-Con el mapa relleno, ya puede comenzar la partida. Mediante la tecnología de **kafka**, se depositan en las respectivas colas los mensajes con el mapa, y el inicio de la partida. A partir de aquí, la aplicación ejecutará indefinidamente el método  `escucharMovimientos()`. 
+Con el mapa relleno, se genera un mensaje de broadcast de inicio de partida, se envía el mapa inicial a los jugadores, y se lanzan dos hilos en paralelo.
 
-Cuando un jugador se conecte a una partida, se hará uso de la tecnología de **kafka** para escuchar los movimientos recibidos del productor ( *AA_Player* ). El método `escucharMovimientos()` , estará consumiendo dichos movimientos.
+    enviarMensaje(Broker,'broadcast', 'inicioPartida')
+    enviarMensaje(Broker, 'mapa', None)
+    t1 = threading.Thread(target=escucharMovimientos, args = [Broker])
+    t2 = threading.Thread(target=finalizarPartidaPorTiempo, args = [Broker])
+
+ El primer hilo lleva la cuenta del tiempo transcurrido, y cuando se alcanza el tiempo límite, envía a todos los jugadores (y a sí mismo) una serie de mensajes que desencadenan el final de la partida
 
 ```python
-from kafka import KafkaConsumer
+ def finalizarPartidaPorTiempo(Broker):
+    
+    tiempo = 0
 
+    while tiempo < tiempoPartida:
+        sleep(1)
+        tiempo = tiempo + 1
+        if jugadoresVivos == 1:
+            return
 
-def escucharMovimientos(Broker):
-    consumer = KafkaConsumer(
-    'player_move',
-     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='earliest',
-     enable_auto_commit=True,
-     group_id='my-group',
-     value_deserializer=lambda x: json.loads(x.decode('utf-8')))
+    enviarMensaje(Broker,'broadcast', 'finTiempo')
+    enviarMensaje(Broker, 'mapa', 'finTiempo')
+    enviarMensaje(Broker, 'player_move', 'finTiempo')
 
-    for message in consumer:
-        message = message.value
-        print('{} move registered '.format(message))
+    return 
 ```
+El segundo hilo está indefinidamente leyendo el topic de **kafka** que contiene los movimientos de los jugadores. Tiene como condición de salida la recepción del evento de límite de tiempo, o que sólo quede un jugador vivo. Mientras no se cumpla alguna de estas dos condiciones, el hilo realiza una serie de tareas, que detallamos a nivel pseudocódigo:
 
-`TODO: completar código y descripción con implementación final`
-
+```
+ def escucharMovimientos(Broker):
+    consumer = KafkaConsumer(...)
+    for message in consumer:
+        - comprueba que el mensaje contiene el código de partida correcto
+        - analiza el mensaje para saber si es de movimiento o de final de partida. Si es final de partida, sale del bucle. Si es de movimiento:
+            - determina si el movimiento proviene de un jugador o un NPC, y si está vivo. En caso de no estar vivo, el movimiento no se analiza
+                - Si es NPC: 
+                    -lo añade a una lista de NPCs si no existe ya en la partida.
+                    - mueve al jugador. 
+                    - determina si ha matado a un jugador u otro NPC.
+                    - actualiza el mapa.
+                - Si es jugador: 
+                    - envía un ACK de recepción de mensaje
+                    - mueve al jugador al destino
+                    - actualiza el nivel del jugador con el bonus de frío o calor correspondiente a la ciudad en la que está
+                    - comprueba la casilla destino:
+                        - Alimento: incrementa el nivel
+                        - Mina: el jugador muere y se activa la lógica de final de partida, si sólo queda otro jugador vivo
+                        - Jugador o NPC: Mata a otro jugador si su nivel es mayor, o muere si su nivel es menor. Empatan si tienen el mismo nivel. Se activa la lógica de final de partida, si sólo queda otro jugador vivo
+                    - actualiza el mapa
+            - Envía mensajes a la cola correspondiente, con el mapa y la muerte de un jugador (si procede)
+            - borra la partida grabada anterior (Resiliencia)
+            - graba la nueva partida (Resiliencia)   
+```
 
 ## Consideraciones cuando un jugador entra en una partida
 
