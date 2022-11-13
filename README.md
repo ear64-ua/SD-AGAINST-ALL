@@ -214,11 +214,15 @@ Hay un mensaje especial de control de final de partida por tiempo, en el que el 
  El primer mensaje contiene un string con el mapa del mundo, y se utiliza para que los jugadores puedan imprimir el mapa del mundo.  
  El segundo mensaje contiene un booleano que avisa de que la partida ha finalizado, y sirve para poder salir de los hilos y cerrar la aplicación AA_Player correctamente.
 
-3. estadoJugador: Este topic sirve para varias cosas: comunicar que un jugador ha muerto, coordinar el inicio y final de partida, reanudar una partida (resiliencia), y enviar ACKs de servidor online a los jugadores (resiliencia). Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber tres tipos de mensajes:
+3. estadoJugador: Este topic sirve para varias cosas: comunicar la información de un jugador, coordinar el inicio y final de partida, reanudar una partida (resiliencia), y enviar ACKs de servidor online a los jugadores (resiliencia). Sólo escribe en él la aplicación AA_Engine, y los mensajes son consumidos por las distintas aplicaciones AA_Player y AA_NPC que haya arrancadas. En el topic puede haber tres tipos de mensajes:
 
         data = {'alias' : jugador.alias,
                 'nivelReal' : jugador.nivelReal,
-                'codigoPartida' : codigoPartida }
+                'codigoPartida' : codigoPartida,
+                'avatar' : jugador.avatar,
+                'ciudad' : ciudad.nombre,
+                'posX' : jugador.posX,
+                'posY' : jugador.posY }
 
         data = {'broadcast': mensaje de broadcast,
                 'codigoPartida' : codigoPartida}
@@ -228,7 +232,7 @@ Hay un mensaje especial de control de final de partida por tiempo, en el que el 
                 'numMovimiento' : numMovimiento,
                 'codigoPartida' : codigoPartida }
 
-El primer mensaje representa la muerte de un jugador. Contiene el jugador al que va dirigido el mensaje, y el nivel del jugador, que siempre va a ser -99, indicándole así que debe salir del juego.  
+El primer mensaje representa la información de un jugador. Contiene el jugador al que va dirigido el mensaje, su nivel, su avatar, y la ubicación en el mapa. Toda esta información se utiliza en la interfaz de AA_Player, para dar información al usuario y que no vaya a ciegas por el mapa. Además, este mensaje también sirve para determinar la muerte de los jugadores. Cuando el nivel del jugador es -99, significa que ha muerto, así que debe salir del juego.  
 El segundo mensaje es de broadcast, y va dirigido a todos los jugadores. El contenido del mensaje puede ser 'inicioPartida', 'reanudarPartida' o 'finPartida'. La primera opción indica a los jugadores que ya está todo preparado para iniciar la partida, y pueden empezar a leer mensajes de los dos topics. La segunda opción la veremos en el apartado de Resiliencia. La tercera opción indica que la partida ha terminado, y el único jugador que queda vivo mostrará un mensaje de victoria.  
 El tercer mensaje es un ACK para que el jugador sepa que el servidor está funcionando. Lo veremos más detallado en la parte de resiliencia.
 
@@ -262,6 +266,8 @@ Finalmente resultó que, al corregir el primer problema, el segundo desaparecía
 **Problema 6**: (Resiliencia). Este problema surge ante la imposibilidad de utilizar sockets entre la aplicación AA_Player y AA_Engine, salvo para la identificación inicial. Utilizando un socket, la detección de caída del servidor es inmediata, ya que no puede establecer la conexión. Al depender únicamente de Kafka, tuvimos que solucionar el problema mediante el sistema de ACKs descritos en la parte de resiliencia.
 
 **Problema 7**: (Escalabilidad). Al toparnos con la escalabilidad de los servicios, nos dimos cuenta de que no podíamos asignar IP's estáticas o puertos a los contenedores si queríamos desplegar varios de ellos. Para ello hemos dejado que __docker__ sea el que nos asigne automáticamente las IP's de los servicios que sean desplegados. Estas direcciones asignadas serán recogidas por el script que hace correr el servicio que escojamos.
+
+**Problema 8**: Existe un bug en los NPCs, no corregido, por el que cualquier NPC deja de moverse cuando muere en una partida. Este funcionamiento es correcto cuando solo hay una partida ejecutándose, pero es un fallo cuando hay varias partidas concurrentes. Debido a la complejidad artificialmente añadida en la práctica, de no poder registrar a un NPC en un servidor concreto, el bug queda sin corregir.
 
 # Componentes software
 
@@ -656,7 +662,7 @@ El segundo hilo está indefinidamente leyendo el topic de **kafka** que contiene
         - analiza el mensaje para saber si es de movimiento o de final de partida. Si es final de partida, sale del bucle. Si es de movimiento:
             - determina si el movimiento proviene de un jugador o un NPC, y si está vivo. En caso de no estar vivo, el movimiento no se analiza
                 - Si es NPC: 
-                    -lo añade a una lista de NPCs si no existe ya en la partida.
+                    - lo añade a una lista de NPCs si no existe ya en la partida.
                     - mueve al jugador. 
                     - determina si ha matado a un jugador u otro NPC.
                     - actualiza el mapa.
@@ -676,7 +682,46 @@ El segundo hilo está indefinidamente leyendo el topic de **kafka** que contiene
 
 ## AA_NPC
 
-**Pendiente** **TODO** **TO_DO**
+El módulo de jugadores no humanos es similar en su concepción al de los jugadores humanos, pero con un par de cambios. En este módulo, los NPCs vuelcan directamente su movimiento en la cola de mensajes, sin tener que pasar por un proceso de registro. 
+Al igual que el AA_Player, la aplicación utiliza tres hilos. Uno de estos hilos genera el movimiento aleatoriamente, y lo envía al servidor. Los otros dos hilos leen datos enviados por el servidor, y la aplicación procesa la información.
+
+```python
+    t1 = threading.Thread(target=insertarMovimiento, args = [Broker])
+    t2 = threading.Thread(target=leerMapa, args = [Broker])
+    t3 = threading.Thread(target=leerEstado, args = [Broker])
+```
+
+Describimos cada uno de los hilos:
+
+- El hilo 'leerEstado' es el encargado de toda la lógica interna del programa. Para ello, lee los mensajes depositados por el servidor en el topic 'estadoJugador' de **Kafka**. Estos mensajes sirven para activar o desactivar las variables de control 'jugadorVivo' y 'partidaIniciada', que se utilizan para arrancar y parar la aplicación, y decidir qué mensajes se muestran por pantalla al usuario. 
+
+- El hilo 'insertarMovimiento' es un bucle que calcula de forma automática el movimiento que desea enviar al servidor, eligiendo al azar una de las ocho direcciones disponibles. El envío se realizará mediante el topic 'player_move' de **Kafka**. Además, para no saturar la cola de movimientos, hemos tomado la decisión de que los NPCs se muevan una vez cada cinco segundos.
+
+```python
+    indice = random.randint(0,len(arrayMovimientos)-1)
+    data = {'alias':            alias,
+            'codigoPartida':    'NPC',
+            'move' :            arrayMovimientos[indice],
+            'nivel':            nivel
+            }
+    print(data)               
+    if(jugadorVivo):        
+        producer.send('player_move', value=data)
+    sleep(5)
+```
+
+- El hilo 'leerMapa' se encarga de leer el mapa y mostrarlo por pantalla. La lectura se realiza en el topic 'mapa' de **Kafka**. 
+
+```python
+    for message in consumer:
+            if(jugadorVivo):
+                message = message.value
+                if(message['codigoPartida']) == codigoPartida:
+                    if('mapa' in message):
+                        mapa = message['mapa']
+                        print(mapa)
+                        print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
+``` 
 
 # Resiliencia
 
