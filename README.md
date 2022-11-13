@@ -698,6 +698,8 @@ El módulo de NPCs es un complemento a las partidas, y se puede caer en cualquie
 El efecto de la caída es que la aplicación deja de enviar mensajes a la cola de movimientos. El servidor no es capaz de saber que este módulo ha caído, por lo que simplemente mantiene al jugador NPC en el mapa, sin moverse, hasta que otro NPC o un jugador lo mate.
 Cuando el módulo se recupera, se genera un nuevo NPC, que se mueve de forma independiente al NPC anterior que cayó.
 
+## AA_Player
+
 ## Consideraciones cuando un jugador entra en una partida
 
 - Los factores de clima frío y calor se deben generar aleatoriamente cuando un jugador entra en la partida. Los valores son entre -10 y +10
