@@ -22,6 +22,9 @@ NUM_CITIES = 4
 MIN_CLIMA = -10
 MAX_CLIMA = 10
 
+ERR_ARGS = 'Uso incorrecto de argumentos. Use IP_engine IP_weather maxJugadores tiempoPartida'
+
+
 colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
 
 #lista de jugadores que van a tomar parte en la partida
@@ -880,27 +883,17 @@ def comenzarPartida():
 
     print("FIN DE LA PARTIDA")    
 
-def loadConfFile():
-    
-    global maxJugadores, tiempoPartida
-    
-    file = open('json_files/conf.json')
-    data = json.load(file)
-    file.close()
-
-    maxJugadores = data['maxJugadores']
-    tiempoPartida = data['tiempoPartida']
 
 def main():
 
-    global codigoPartida
+    global codigoPartida, maxJugadores, tiempoPartida
     comenzar = False
 
     arrayJugadores.clear
     arrayNPCs.clear
 
-    if len(sys.argv[1:]) < 2:
-        print('Uso incorrecto de argumentos. Use IP_engine IP_weather')
+    if len(sys.argv[1:]) < 4:
+        print(ERR_ARGS)
         return -1
     args = sys.argv[1:]
 
@@ -910,7 +903,12 @@ def main():
     AA_Weather = Modulo('AA_Weather')
     AA_Weather.setIp(args[1])
 
-    loadConfFile()
+    try:
+        maxJugadores = int(args[2])
+        tiempoPartida = int(args[3])
+    except:
+        print(ERR_ARGS)
+        return -1;
 
     codigoPartida = AA_Engine.getIp()
     if(cargarPartida() == True):
