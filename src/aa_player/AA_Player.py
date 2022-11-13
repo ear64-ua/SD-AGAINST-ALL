@@ -70,7 +70,7 @@ def leerMapa(Broker):
                     if('mapa' in message):
                         mapa = message['mapa']
                         print(mapa)
-                        print('Choose your direction (N,S,E,W, NE, NW, SE, SW): ')
+                        print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
                     elif ('finPartida' in message):
                         if (message['finPartida']):
                             consumer.close()
@@ -128,7 +128,6 @@ def leerEstado(Broker):
 
     for message in consumer:
         message = message.value 
-        print(message)
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
                 if(message['numMovimiento'] == numMovimientos-1):
