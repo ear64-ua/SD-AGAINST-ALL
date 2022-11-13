@@ -75,9 +75,9 @@ class Modulo:
 
 
 class Player:
-    def __init__(self,alias,nivel,tipo):
+    def __init__(self,alias,nivel,tipo,avatar):
         self.alias = alias
-        self.aliasCorto = alias[0].upper()
+        self.avatar = avatar
         self.ciudadX = random.randint(0,(NUM_CITIES/2)-1)
         self.ciudadY = random.randint(0,(NUM_CITIES/2)-1)
         self.posX = random.randint(0,TAM_CIUDAD-1)
@@ -187,7 +187,7 @@ class Mapa:
 
     def colocarJugador(self,jugador):
         ciudad = self.ciudades[jugador.ciudadX][jugador.ciudadY]
-        ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto
+        ciudad.casillas[jugador.posX][jugador.posY] = jugador.avatar
 
     def analizarChoqueJugador(self,jugador):
         global jugadoresVivos
@@ -221,8 +221,8 @@ class Mapa:
                 jugador2 = array[i]
                 posX = jugador2.posX
                 posY = jugador2.posY
-                alias = jugador2.aliasCorto
-                if ((jugador.posX == posX) and (jugador.posY == posY) and jugador.aliasCorto != alias and jugador2.nivelReal >= -10):
+                alias = jugador2.avatar
+                if ((jugador.posX == posX) and (jugador.posY == posY) and jugador.avatar != alias and jugador2.nivelReal >= -10):
                     encontrado = True
                 else:
                     i = i + 1    
@@ -234,7 +234,7 @@ class Mapa:
                     if jugador2.tipo == 'PC':
                         jugadoresVivos = jugadoresVivos - 1
                     data = generarMensajeEstado(jugador2)
-                    ciudad.casillas[jugador.posX][jugador.posY] = jugador.aliasCorto 
+                    ciudad.casillas[jugador.posX][jugador.posY] = jugador.avatar 
                 elif(jugador.nivelReal < jugador2.nivelReal):
                     ##Mato al jugador 1
                     jugador.matar()
@@ -515,7 +515,7 @@ def escucharMovimientos(Broker):
     for message in consumer:
         finTiempo = False
         message = message.value
-        print('{} moved registered '.format(message))
+        print('{} movimiento registrado!'.format(message))
         try:
             direccion = message['move']
             alias = message['alias']
@@ -555,7 +555,7 @@ def escucharMovimientos(Broker):
                 jugador = buscarJugador(arrayNPCs, alias)
                 if (jugador == False): ##El jugador no está presente en el array
                     ##Creo un nuevo jugador NPC y lo meto en el array de NPCs
-                    jugador = Player(alias, int(alias[0]), 'NPC')
+                    jugador = Player(alias, int(alias[0]), 'NPC','')
                     arrayNPCs.append(jugador)
                 mapa.borrarJugador(jugador)    
                 moverJugador(jugador,direccion)
@@ -653,7 +653,7 @@ def handle_player(conn,addr):
     global numJugadores
     jugador = autentificarJugador(conn)
     if jugador != False:
-        objetoJugador = Player(jugador['alias'], jugador['nivel'], 'PC')
+        objetoJugador = Player(jugador['alias'], jugador['nivel'], 'PC',jugador['avatar'])
         if(buscarJugador(arrayJugadores,jugador['alias'])):
             data = {    'msg' : 'El jugador ya está registrado en la partida',
                         'verified' : False
@@ -727,7 +727,7 @@ def conexion_clima(AA_Weather):
 def colocarJugadores():
     for jugador in arrayJugadores:
         ciudad = mapa.getCiudad(jugador.ciudadX,jugador.ciudadY)
-        ciudad.setCasilla(jugador.posX,jugador.posY,jugador.aliasCorto)
+        ciudad.setCasilla(jugador.posX,jugador.posY,jugador.avatar)
         jugador.actualizarNivelReal()    
 
 def rellenarCiudades():
@@ -746,7 +746,7 @@ def cargarCiudad(objeto, coordenada):
     return nuevaCiudad
 
 def cargarJugador(player):
-    jugador = Player(player['alias'], player['nivel'], player['tipo'])    
+    jugador = Player(player['alias'], player['nivel'], player['tipo'], player['avatar'])    
     jugador.ciudadX = player['ciudadX']
     jugador.ciudadY = player['ciudadY']
     jugador.posX = player['posX']

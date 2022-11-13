@@ -176,6 +176,18 @@ def jugarPartida(Broker):
     t3.join()
 
 
+def chooseAvatar():
+
+  emojis = ['\U0001F479','\U0001F47D','\U0001F916','\U0001F480','\U0001F47E','\U0001F47B','\U0001F920']
+
+  print('Choose your avatar:')
+
+  for emoji in enumerate(emojis):
+    print(emoji)
+
+  choice = input('> ')
+  return emojis[int(choice)]
+
 # El jugador intentará identificarse en la base de datos y si todo es correcto, podrá jugar la partida
 def conectarPartida(AA_Engine):
 
@@ -221,10 +233,12 @@ def insertRegistry(AA_Registry):
     global alias
     alias = input('alias: ')
     password = input('password: ')
+    avatar = chooseAvatar()
 
-    # Se pedirá al usuario el alias y contraseña
+    # Se pedirá al usuario el alias,avatar y contraseña
     datos = {   "alias":    alias, 
                 "password": password,
+                "avatar":   avatar,
                 "nivel":    '1',
                 "posX":     '0',
                 "posY":     '0',
