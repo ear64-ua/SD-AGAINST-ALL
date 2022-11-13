@@ -9,6 +9,7 @@ from threading import Thread
 import random
 
 alias = ''
+nivel = 1
 numJugador = ''
 jugadorVivo = True
 partidaIniciada = True
@@ -53,9 +54,11 @@ def insertarMovimiento(Broker):
 
     while True:
         indice = random.randint(0,len(arrayMovimientos)-1)
-        data = {'alias': alias,
-                'codigoPartida' : 'NPC',
-                'move' : arrayMovimientos[indice]}
+        data = {'alias':            alias,
+                'codigoPartida':    'NPC',
+                'move' :            arrayMovimientos[indice],
+                'nivel':            nivel
+                }
         print(data)               
         if(jugadorVivo):        
             producer.send('player_move', value=data)
@@ -107,7 +110,7 @@ def leerEstado(Broker):
 
 def jugarPartida(Broker):
 
-    global alias
+    global alias,nivel
 
     nivel = random.randint(1,9)
     seed = random.randint(0,999999999)
