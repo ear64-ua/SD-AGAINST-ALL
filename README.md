@@ -771,7 +771,15 @@ Install [docker](https://www.docker.com/products/docker-desktop/)
 
 # Despliegue
 
-``./run.sh``
+En el despliegue se ha hecho uso de los contenedores de Docker. Nos hemos encotrado con problemas al asignar IP's estáticas , ya que al estar definidas en ``docker-compose.yml`` , si un servicio se quiere escalar, no sería posible ya que estaría ocupando la misma dirección IP. Para solucionar esto, dejamos que Docker sea el que nos proporcione las direcciones, ya que al permitirnos crear una red interna, sus componentes se conectan al adaptador ``Docker 0`` , que actúa como un switch, y sería la puerta por defecto de nuestra red. Al no conocer las IP's que nos van a proporcionar a nuestros servicios, tenemos el problema de que no sabemos dónde conectarnos de un módulo cliente a un módulo servidor. Para ello, se ha hecho uso de scripts, que nos filtrarán las direcciones de cada contenedor desplegado. Tras usar ``docker compose up -d --scale aa_player=x`` , no nos tendríamos que preocupar de que un mismo servicio se tenga que conectar con una IP ya usada. El parámetro ``--scale`` nos permite escalar el número de instancias de un determinado servicio.
+El despliegue quedaría de la siguiente manera:
+
+
+<img src=documentacion/docker.jpg width=400px height=400px>
+
+
+Y lo desplegaríamos ejecutando en ``/src`` lo siguiente:
+`./run.sh`
 
 ## Correr servicios
 
