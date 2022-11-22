@@ -90,7 +90,6 @@ En el método empleado para imprimir una ciudad, se le pasa como parámetro la f
         return c
 ```
 
-`TODO: implementar y documentar el método setCasillas`
 
 ## Jugador
 
