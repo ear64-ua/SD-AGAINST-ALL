@@ -138,43 +138,17 @@ Se han definido distintos módulos dentro de un fichero JSON:
 }
 ```
 
-Para representarlos y crear instancias con la clase **Modulo**:
-```python
-class Modulo:
-    def __init__(self,id):
-
-        file = open('src/json_files/addresses.json')
-        data = json.load(file)
-        file.close()
-
-        for dir in data['direcciones']:
-            if dir['Id'] == id:
-                self.ip = dir['IP']
-                self.port = int(dir['port'])
-
-    def setIp(self,ip):
-        self.ip = ip
-    
-    def setPort(self,port):
-        self.port = port
-    
-    def getIp(self):
-        return self.ip
-    
-    def getPort(self):
-        return self.port
-
-```
-
-De esta manera, serán mucho más fácil instanciar y conseguir las direcciones a las que conectarse. Por ejemplo para crear una conexión con el módulo AA_Engine, tan sólo tendriamos que indicar su id y ya podríamos conseguir sus direcciones:
+Para representarlos y crear instancias con la clase **Modulo**, siendo posible generar el puerto del fichero JSON o del argumento del programa. De esta manera, serán mucho más fácil instanciar y conseguir las direcciones a las que conectarse. Por ejemplo para crear una conexión con el módulo AA_Engine, tan sólo tendriamos que indicar su id y ya podríamos conseguir sus direcciones:
 
 ```python
 AA_Engine = Modulo('AA_Engine')
+AA_Engine.setIp(args[0])
 
-ip = AA_Engine.getIp()
-port = AA_Engine.getPort()
+Broker = Modulo('Broker')
+Broker.setIPfromJson('Broker')
 
 ```
+
 
 # Kafka
 
