@@ -1,3 +1,4 @@
+import requests
 import json
 import random
 import socket
@@ -21,6 +22,7 @@ MIN_MINAS = 15
 NUM_CITIES = 4
 MIN_CLIMA = -10
 MAX_CLIMA = 10
+MAX_CITIES = 10
 
 SOCK_CLOSE = ''
 ERR_WEATHER = '[SOCKET] Hubo un error al conectar con el servidor de tiempo'
@@ -110,10 +112,10 @@ class Player:
 
     def actualizarNivelReal(self):
         ciudad = mapa.getCiudad(self.ciudadX,self.ciudadY)
-        temperatura = int(ciudad.getTemperatura())
-        if temperatura >= 25:
+        temperatura = float(ciudad.getTemperatura())
+        if temperatura >= 25.00:
             self.nivelReal = int(self.nivel) + int(self.EC)
-        elif temperatura <= 10:
+        elif temperatura <= 10.00:
             self.nivelReal = int(self.nivel) + int(self.EF)
         else:
             self.nivelReal = int(self.nivel)        
@@ -330,42 +332,48 @@ class Mapa:
 #mapa del mundo
 mapa = Mapa()
 
-def sendWeather(AA_Weather):
+def chooseRandomCity():
+
+    file = open('json_files/cities.json')
+    data = json.load(file)
+    file.close()
+
+    indx = random.randrange(0,MAX_CITIES) 
+
+    return data['ciudades'][indx]
+
+def sendWeather():
 
     cities = []
+    ciudades = []
 
     try:
-        conn = socket.socket()
-    except socket.error as err:
-        print('[SOCKET] Socket error because of %s' %(err))
-
-    try:
-        conn.connect((AA_Weather.getIp(), AA_Weather.getPort()))
-
         i = 0
 
         # enviar peticiones hasta que tengamos NUM_CITIES distintas recibidas de AA_Weather
         while i < NUM_CITIES:
-            conn.send('send city'.encode())
-            city = conn.recv(1024).decode()
-            print(f'[SOCKET] City received -> {city}')
 
-            if json.loads(city) not in cities:
-                cities.append(json.loads(city))
+            ciudad = chooseRandomCity()
+            if(ciudad not in ciudades):
+                ciudades.append(ciudad)
                 i += 1
-        
-        conn.send('ok'.encode())
-       
-    except: 
-        if socket.gaierror:
-            print('[SOCKET] There was an error while resolving the host')
-        else:
-            print(ERR_WEATHER)    
-        conn.close()
-        return False
 
-                
-    conn.close()
+        for ciudad in ciudades:
+
+            api_key = '24e0746c988265d508f9f10a8da6303e'
+            api_request = 'https://api.openweathermap.org/data/2.5/weather?q=' + ciudad + '&appid=' + api_key + '&mode=json'
+
+            response = requests.get(api_request)
+            data = response.text
+            parse_json = json.loads(data)
+            temperaturaK = parse_json['main']['temp']
+            temperaturaC = float(temperaturaK) - float(273.15)
+
+            city = '{"nombre" : "' + str(ciudad) + '",' + '"temperatura" : "'  + str(round(temperaturaC, 2)) + '"}'
+            cities.append(json.loads(city))
+    except: 
+        print(ERR_WEATHER)    
+        return False
 
     #return cities
     return array2json(cities)
@@ -713,12 +721,12 @@ def conexion_player(AA_Engine):
     print('[SOCKET] Closed')
     return True
 
-def conexion_clima(AA_Weather):
+def conexion_clima():
     ## Conexión AA_Weather
 
     cities = ''
 
-    cities = sendWeather(AA_Weather)
+    cities = sendWeather()
 
     num_bloque = 0
     #lee las ciudades almacenadas en el fichero y las añade al mapa
@@ -874,11 +882,11 @@ def borrarPartidaGuardada():
     print(BD_CLOSE)
     conn.close()
 
-def generarPartida(AA_Weather):
+def generarPartida():
     global jugadoresVivos
     jugadoresVivos = numJugadores
 
-    if conexion_clima(AA_Weather):
+    if conexion_clima():
         colocarJugadores()
         rellenarCiudades()
         guardarPartida()
@@ -942,7 +950,7 @@ def main():
         ##Esperamos que los jugadores se conecten
         print('[PARTIDA] ESPERANDO JUGADORES')
         conexion_player(AA_Engine)
-        comenzar = generarPartida(AA_Weather)
+        comenzar = generarPartida()
     
     sleep(3)
     if comenzar:
