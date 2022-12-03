@@ -9,6 +9,7 @@ from time import sleep
 from json import dumps
 from json import loads
 from threading import Thread
+import requests
 
 alias = ''
 password = ''
@@ -231,7 +232,7 @@ def conectarPartida(AA_Engine):
     engine_socket.close()
     return conectado
 
-def insertRegistry(AA_Registry):
+def insertRegistrySocket(AA_Registry):
 
     global alias
     alias = input('alias: ')
@@ -278,7 +279,7 @@ def insertRegistry(AA_Registry):
     conn.close()
 
 # Conecta con la base de datos y devuelve si se ha insertado o no
-def updateRegistry(AA_Registry):
+def updateRegistrySocket(AA_Registry):
 
     # contraseña antigua
     print()
@@ -323,17 +324,77 @@ def updateRegistry(AA_Registry):
                 
     conn.close()
 
+def insertRegistryApi(registry):
+    
+    global alias
+    alias = input('alias: ')
+    password = input('password: ')
+    avatar = chooseAvatar()
+
+    # Se pedirá al usuario el alias,avatar y contraseña
+    datos = {   "alias":    alias, 
+                "password": password,
+                "avatar":   avatar,
+                "nivel":    '1',
+                "posX":     '0',
+                "posY":     '0',
+                "ef":       '0',
+                "ec":       '0',
+                "ciudad":   '0'
+            }
+    # Convertimos datos en un string con formato JSON
+    datos = json.dumps(datos)
+
+    ip = registry.getIp()
+
+    api_request = 'http://' + ip + ':8000' + '/registrar?data=' + datos
+
+    response = requests.post(api_request)
+    data = response.text
+    print(data)
+
+def updateRegistryApi(registry):
+    global alias
+    alias = input('alias: ')
+    password = input('password: ')
+
+    data = {   'alias' : alias,
+                'password' : password
+            }
+    # convertimos los datos a json para poder enviarlos al servidor
+    oldData = json.dumps(data)
+
+    # nueva contraseña
+    data = {    "password": input('new password: ') }
+    newData = json.dumps(data)
+
+    ip = registry.getIp()
+
+    api_request = 'http://' + ip + ':8000' + '/actualizar?oldData=' + oldData + '&newData=' + newData
+
+    response = requests.post(api_request)
+    data = response.text
+    print(data)
 
 # Muestra el menú de opciones que tiene el jugador
-def menu():
+def menu2():
 
     print('Elige una opción:')
     print('1. Crear perfil')
     print('2. Editar perfil')
     print('3. Unirse a partida')
-    print('4 Salir')
+    print('4. Salir')
 
     return input('Tu opción: ')
+
+
+def menu():
+    print('Elige tu forma de conexion al juego:')
+    print('1. Sockets')
+    print('2. Api Rest')
+    print('3. Salir')
+
+    return input('Tu opción: ')      
 
 def main():
     
@@ -350,18 +411,37 @@ def main():
     Broker = Modulo('Broker') 
     Broker.setIPfromJson('Broker')
 
-    while jugadorVivo:
-        opcion = menu()
+    opcion = '0'
 
-        if opcion == '1': # Creamos un usuario
-            insertRegistry(AA_Registry)
-        elif opcion == '2': # Editamos la contraseña del usuario
-            updateRegistry(AA_Registry)
-        elif opcion == '3': # Conexión a partida
-            if conectarPartida(AA_Engine):
-                jugarPartida(Broker)
-        else:
+    while jugadorVivo:
+        if (opcion != '1' and opcion != '2'):
+            opcion = menu()
+        if opcion == '1':
+            opcionS = menu2()
+            if opcionS == '1': # Creamos un usuario
+                insertRegistrySocket(AA_Registry)
+            elif opcionS == '2': # Editamos la contraseña del usuario
+                updateRegistrySocket(AA_Registry)
+            elif opcionS == '3': # Conexión a partida
+                if conectarPartida(AA_Engine):
+                    jugarPartida(Broker)
+            else:
+                break        
+        elif opcion == '2':
+            opcionAR = menu2()
+            if opcionAR == '1': # Creamos un usuario
+                insertRegistryApi(AA_Registry)
+            elif opcionAR == '2': # Editamos la contraseña del usuario
+                updateRegistryApi(AA_Registry)
+            elif opcionAR == '3': # Conexión a partida
+                if conectarPartida(AA_Engine):
+                    jugarPartida(Broker)
+            else:
+                break
+        elif opcion == '3':
             break
+        else:
+            continue
 
     
 

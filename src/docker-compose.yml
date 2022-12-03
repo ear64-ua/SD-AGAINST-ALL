@@ -20,6 +20,7 @@ services:
     container_name: aa_registry
     ports:
        - "1600:1600"
+       - "8000:8000"
     build: ./aa_registry
     stdin_open: true
     tty: true

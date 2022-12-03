@@ -6,6 +6,10 @@ import json
 from pymongo import MongoClient   
 import pymongo
 from classes import Modulo
+import threading
+from flask import Flask, jsonify, request,send_file
+
+app = Flask(__name__)
 
 BD_CONNECTION = "[BD] Connected to MongoDB successfully!!!"
 BD_ERR = "[BD] Could not connect to MongoDB"
@@ -120,7 +124,34 @@ def updating(c):
     else:
         c.send('Error while updating !'.encode())
 
-def main():
+@app.route('/registrar', methods = ['POST'])
+def registrar():
+    
+    data = request.args.get('data')
+    dataJson = json.loads(data)
+    
+    if mongoInsert(dataJson):
+        return ('Inserted succesfully !')
+    else:
+        return ('Error while inserting !')
+
+@app.route('/actualizar', methods = ['POST'])
+def actualizar():
+    
+    data = request.args.get('oldData')
+    oldData = json.loads(data)
+    data = request.args.get('newData')
+    newData = json.loads(data)
+    
+    if mongoUpdate(oldData, newData):
+        return ('Updated succesfully !')
+    else:
+        return ('Error while updating !')        
+
+def apiRun():
+    app.run(debug=False, port=8000, host="0.0.0.0")
+
+def socketRegistry():
     
     AA_Registry = Modulo('AA_Registry')
 
@@ -150,6 +181,14 @@ def main():
 
         c.close()
         print('[SOCKET] Closed connection: ' + str(address))
+
+def main():
+    t1 = threading.Thread(target=socketRegistry, args = [])
+    t2 = threading.Thread(target=apiRun, args = [])
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
 
 
 if __name__ == "__main__":
