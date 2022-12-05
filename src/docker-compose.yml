@@ -2,6 +2,18 @@ version: '2'
 
 services:
 
+  api_engine:
+    container_name: api_engine
+    hostname: api_engine
+    build: ./api_engine
+    stdin_open: true
+    tty: true
+    ports:
+      - "8081:8081"
+    networks:
+      my_net:
+        ipv4_address: 172.20.0.20
+
   aa_player:
     build: ./aa_player
     stdin_open: true
@@ -43,11 +55,21 @@ services:
     networks:
       my_net:
 
+  #front:
+  #  container_name: front
+  #  build: ./front
+  #  ports:
+  #    - "8080:8080"
+  #  stdin_open: true
+  #  tty: true
+  #  networks:
+  #    my_net:
+
   mongodb:
     image: mongo:latest
     container_name: mongodb
     ports:
-      - "27017:27017"
+      - "27012:27017"
     networks:
         my_net:
           aliases: 
@@ -85,4 +107,6 @@ networks:
   my_net:
     driver: bridge
     ipam:
-     driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
