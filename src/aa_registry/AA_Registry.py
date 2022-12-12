@@ -8,13 +8,53 @@ import pymongo
 from classes import Modulo
 import threading
 from flask import Flask, jsonify, request,send_file
-from datetime import datetime, time
+from datetime import datetime
 import logging
+from hashlib import pbkdf2_hmac
+import random
+import string
 
 app = Flask(__name__)
 
 BD_CONNECTION = "[BD] Connected to MongoDB successfully!!!"
 BD_ERR = "[BD] Could not connect to MongoDB"
+
+# Aplica la función hash al password indicado, junto con la sal
+def hashPassword(plaintext:str, salt:str):
+    password = pbkdf2_hmac('sha256', plaintext.encode(), salt.encode(), 2)
+    return password
+
+# Busca al usuario en la BD. Si existe, devuelve la sal almacenada. Si no existe, genera una nueva sal
+def getSalt(usuario):
+    
+    salt = ''
+    
+    try:
+        conn = MongoClient('mongodb://mongodb')
+        logging.info(BD_CONNECTION)
+        print(BD_CONNECTION)
+    except:  
+        print(BD_ERR)
+        logging.error(BD_ERR)
+        return False
+
+    db = conn.gameDB
+    collection = db.players
+
+    try:
+        result = collection.find_one({"alias": usuario})
+        # Si no encuentra ninguno devuelve None
+        if result == None:
+            salt = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(32))
+        else:    
+            salt = result['salt']
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    return salt
+
 # Busca si el alias de un jugador existe en la base de datos
 def findPlayer(collection,data):
 
@@ -45,12 +85,33 @@ def mongoInsert(data):
     db = conn.gameDB
     collection = db.players
 
-    # Si no ha encontrado a nadie con el mismo alias, inserta
+    # Si no ha encontrado a nadie con el mismo alias, sigue con el proceso
     if findPlayer(collection,{'alias' : data['alias']}):
         return False
 
     try:
-        collection.insert_one(data)
+        #Se hashea la contraseña primero
+        usuario = data['alias']
+        password = data['password']
+        salt = getSalt(usuario)
+        hashedPassword = hashPassword(password,salt).hex()
+
+        #Se compone el array que se va a introducir en BD
+
+        datos = {"alias" : usuario,
+                 "password" : hashedPassword,
+                 "salt" : salt,
+                 "avatar":   data['avatar'],
+                 "nivel":    data['nivel'],
+                 "posX":     data['posX'],
+                 "posY":     data['posY'],
+                 "ef":       data['ef'],
+                 "ec":       data['ec'],
+                 "ciudad":   data['ciudad']
+                 }
+
+        #Se almacenan los datos del jugador en BD
+        collection.insert_one(datos)
 
     except pymongo.errors.PyMongoError as e:
         print(e)
@@ -74,15 +135,22 @@ def mongoUpdate(oldData, newData):
     db = conn.gameDB
     collection = db.players
 
+    usuario = oldData['alias']
+    oldPassword = oldData['password']
+    newPassword = newData['password']
+    salt = getSalt(usuario)
+    hashedOldPassword = hashPassword(oldPassword,salt).hex()
+    hashedNewPassword = hashPassword(newPassword,salt).hex()
+
     try:
         # buscamos al jugador con el mismo alias y password, y actualizamos el password
         result = collection.find_one_and_update(
             {
-                'alias': oldData['alias'],
-                'password': oldData['password']
+                'alias': usuario,
+                'password': hashedOldPassword
             },
             {'$set': { 
-                'password':newData['password']
+                'password': hashedNewPassword
                 }
             }
         ) 
