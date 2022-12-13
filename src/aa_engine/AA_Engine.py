@@ -12,6 +12,9 @@ from json import loads
 from json import dumps
 from time import sleep
 from types import SimpleNamespace
+from hashlib import pbkdf2_hmac
+import random
+import string
 
 VACIO = '.'
 TAM_CIUDAD = 10
@@ -332,6 +335,40 @@ class Mapa:
 #mapa del mundo
 mapa = Mapa()
 
+# Aplica la función hash al password indicado, junto con la sal
+def hashPassword(plaintext:str, salt:str):
+    password = pbkdf2_hmac('sha256', plaintext.encode(), salt.encode(), 2)
+    return password
+
+# Busca al usuario en la BD. Si existe, devuelve la sal almacenada. Si no existe, genera una nueva sal
+def getSalt(usuario):
+    
+    salt = ''
+    
+    try:
+        conn = MongoClient('mongodb://mongodb')
+        print(BD_CONNECTION)
+    except:  
+        print(BD_ERR)
+        return False
+
+    db = conn.gameDB
+    collection = db.players
+
+    try:
+        result = collection.find_one({"alias": usuario})
+        # Si no encuentra ninguno devuelve None
+        if result == None:
+            salt = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(32))
+        else:    
+            salt = result['salt']
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    return salt
+
 def chooseRandomCity():
 
     file = open('json_files/cities.json')
@@ -347,6 +384,12 @@ def sendWeather():
     cities = []
     ciudades = []
 
+
+    file = open('json_files/config.json')
+    data = json.load(file)
+    api_key = data["api_openweather"]
+    file.close()
+
     try:
         i = 0
 
@@ -360,7 +403,6 @@ def sendWeather():
 
         for ciudad in ciudades:
 
-            api_key = '24e0746c988265d508f9f10a8da6303e'
             api_request = 'https://api.openweathermap.org/data/2.5/weather?q=' + ciudad + '&appid=' + api_key + '&mode=json'
 
             response = requests.get(api_request)
@@ -435,7 +477,18 @@ def autentificarJugador(player):
     db = conn.gameDB
     collection = db.players
 
-    jugador = findPlayer(collection,dataJson)
+    #Se hashea la contraseña primero
+    usuario = dataJson['alias']
+    password = dataJson['password']
+    salt = getSalt(usuario)
+    hashedPassword = hashPassword(password,salt).hex()
+
+    #Se compone el array que se va a introducir en BD
+    data = {"alias" : usuario,
+             "password" : hashedPassword
+            }
+
+    jugador = findPlayer(collection,data)
 
     if jugador!=False:
         return jugador
