@@ -55,15 +55,15 @@ services:
     networks:
       my_net:
 
-  #front:
-  #  container_name: front
-  #  build: ./front
-  #  ports:
-  #    - "8080:8080"
-  #  stdin_open: true
-  #  tty: true
-  #  networks:
-  #    my_net:
+  front:
+    container_name: front
+    build: ./front
+    ports:
+      - "8080:8080"
+    stdin_open: true
+    tty: true
+    networks:
+      my_net:
 
   mongodb:
     image: mongo:latest
