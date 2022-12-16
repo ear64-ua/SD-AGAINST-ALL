@@ -8,11 +8,53 @@ import pymongo
 from classes import Modulo
 import threading
 from flask import Flask, jsonify, request,send_file
+from datetime import datetime
+import logging
+from hashlib import pbkdf2_hmac
+import random
+import string
 
 app = Flask(__name__)
 
 BD_CONNECTION = "[BD] Connected to MongoDB successfully!!!"
 BD_ERR = "[BD] Could not connect to MongoDB"
+
+# Aplica la función hash al password indicado, junto con la sal
+def hashPassword(plaintext:str, salt:str):
+    password = pbkdf2_hmac('sha256', plaintext.encode(), salt.encode(), 2)
+    return password
+
+# Busca al usuario en la BD. Si existe, devuelve la sal almacenada. Si no existe, genera una nueva sal
+def getSalt(usuario):
+    
+    salt = ''
+    
+    try:
+        conn = MongoClient('mongodb://mongodb')
+        logging.info(BD_CONNECTION)
+        print(BD_CONNECTION)
+    except:  
+        print(BD_ERR)
+        logging.error(BD_ERR)
+        return False
+
+    db = conn.gameDB
+    collection = db.players
+
+    try:
+        result = collection.find_one({"alias": usuario})
+        # Si no encuentra ninguno devuelve None
+        if result == None:
+            salt = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(32))
+        else:    
+            salt = result['salt']
+
+    except pymongo.errors.PyMongoError as e:
+        print(e)
+        return False
+
+    return salt
+
 # Busca si el alias de un jugador existe en la base de datos
 def findPlayer(collection,data):
 
@@ -33,20 +75,43 @@ def mongoInsert(data):
 
     try:
         conn = MongoClient('mongodb://mongodb')
+        logging.info(BD_CONNECTION)
         print(BD_CONNECTION)
     except:  
         print(BD_ERR)
+        logging.error(BD_ERR)
         return False
 
     db = conn.gameDB
     collection = db.players
 
-    # Si no ha encontrado a nadie con el mismo alias, inserta
+    # Si no ha encontrado a nadie con el mismo alias, sigue con el proceso
     if findPlayer(collection,{'alias' : data['alias']}):
         return False
 
     try:
-        collection.insert_one(data)
+        #Se hashea la contraseña primero
+        usuario = data['alias']
+        password = data['password']
+        salt = getSalt(usuario)
+        hashedPassword = hashPassword(password,salt).hex()
+
+        #Se compone el array que se va a introducir en BD
+
+        datos = {"alias" : usuario,
+                 "password" : hashedPassword,
+                 "salt" : salt,
+                 "avatar":   data['avatar'],
+                 "nivel":    data['nivel'],
+                 "posX":     data['posX'],
+                 "posY":     data['posY'],
+                 "ef":       data['ef'],
+                 "ec":       data['ec'],
+                 "ciudad":   data['ciudad']
+                 }
+
+        #Se almacenan los datos del jugador en BD
+        collection.insert_one(datos)
 
     except pymongo.errors.PyMongoError as e:
         print(e)
@@ -70,15 +135,22 @@ def mongoUpdate(oldData, newData):
     db = conn.gameDB
     collection = db.players
 
+    usuario = oldData['alias']
+    oldPassword = oldData['password']
+    newPassword = newData['password']
+    salt = getSalt(usuario)
+    hashedOldPassword = hashPassword(oldPassword,salt).hex()
+    hashedNewPassword = hashPassword(newPassword,salt).hex()
+
     try:
         # buscamos al jugador con el mismo alias y password, y actualizamos el password
         result = collection.find_one_and_update(
             {
-                'alias': oldData['alias'],
-                'password': oldData['password']
+                'alias': usuario,
+                'password': hashedOldPassword
             },
             {'$set': { 
-                'password':newData['password']
+                'password': hashedNewPassword
                 }
             }
         ) 
@@ -96,19 +168,22 @@ def mongoUpdate(oldData, newData):
     return True
 
 # Opción de insertar en la base de datos
-def inserting(c):
+def inserting(c, address):
     c.send('Inserting...'.encode())
     dataReceived = c.recv(1024).decode()
     # recoge los datos del usuario y los convierte a json
     dataJson = json.loads(dataReceived)
-    
+    ip = address[0]
+
     if mongoInsert(dataJson):
+        logging.info(ip + " [INSERT][SOCKET] Nuevo cliente insertado correctamente.")
         c.send('Inserted succesfully !'.encode())
     else:
+        logging.error(ip + " [INSERT][SOCKET] Error al insertar nuevo cliente.")
         c.send('Error while inserting !'.encode())
 
 # Opción de actualizar en la base de datos
-def updating(c):
+def updating(c, address):
     c.send('Updating...'.encode())
 
     dataReceived = c.recv(1024).decode()
@@ -118,71 +193,99 @@ def updating(c):
     dataReceived = c.recv(1024).decode()
     newData = json.loads(dataReceived)
     #c.send('New data received !'.encode())
+    ip = address[0]
             
     if mongoUpdate(oldData, newData):
+        logging.info(ip + " [UPDATE][SOCKET] Actualizacion de datos de cliente correcta.")
         c.send('Updated succesfully !'.encode())
     else:
+        logging.error(ip + " [UPDATE][SOCKET] Error al actualizar los datos de cliente ")
         c.send('Error while updating !'.encode())
 
 @app.route('/registrar', methods = ['POST'])
 def registrar():
     
     data = request.args.get('data')
+    ip = request.remote_addr
     dataJson = json.loads(data)
     
     if mongoInsert(dataJson):
+        logging.info(ip + " [INSERT][API] Nuevo cliente insertado correctamente.")
         return ('Inserted succesfully !')
     else:
+        logging.error(ip + " [INSERT][API] Error al insertar nuevo cliente.")
         return ('Error while inserting !')
 
 @app.route('/actualizar', methods = ['POST'])
 def actualizar():
     
     data = request.args.get('oldData')
+    ip = request.remote_addr
     oldData = json.loads(data)
     data = request.args.get('newData')
     newData = json.loads(data)
     
     if mongoUpdate(oldData, newData):
+        logging.info(ip + " [UPDATE][API] Actualizacion de datos de cliente correcta.")
         return ('Updated succesfully !')
     else:
+        logging.error(ip + " [UPDATE][API] Error al actualizar los datos de cliente ")
         return ('Error while updating !')        
 
 def apiRun():
-    app.run(debug=False, port=8000, host="0.0.0.0")
+    try:
+        logging.debug("Arrancando servidor registro API")
+        app.run(debug=False, port=8000, host="0.0.0.0")
+        logging.debug("Servidor registro API arrancado correctamente")
+    except Exception as ex:
+        logging.critical(str(ex))
 
 def socketRegistry():
     
     AA_Registry = Modulo('AA_Registry')
 
-    # inicializamos el socket
-    register_socket = socket.socket() 
-    ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
-    register_socket.bind((ip, AA_Registry.getPort())) 
+    try:
+        logging.debug("Arrancando servidor registro socket")
+        # inicializamos el socket
+        register_socket = socket.socket() 
+        ip = socket.gethostbyname_ex(AA_Registry.getIp())[2][0]
+        register_socket.bind((ip, AA_Registry.getPort())) 
 
-    # puede escuchar hasta a 4 jugadores
-    register_socket.listen(4)
+        # puede escuchar hasta a 4 jugadores
+        register_socket.listen(4)
 
-    print(f'[SOCKET] Waiting for someone to register...{[ip,AA_Registry.getPort()]} ')
+        print(f'[SOCKET] Waiting for someone to register...{[ip,AA_Registry.getPort()]} ')
 
-    while(True):
+        while(True):
 
-        # conectamos con el cliente
-        c, address = register_socket.accept()  
-        print("[SOCKET] Connection from: " + str(address))
+            # conectamos con el cliente
+            c, address = register_socket.accept()
+            logging.debug("[SOCKET] Connection from: " + str(address))  
+            print("[SOCKET] Connection from: " + str(address))
 
-        # decodifica los datos enviados para que se puedan leer y procesar
-        option = c.recv(1024).decode()
-        if option == 'insert':
-            inserting(c)
+            # decodifica los datos enviados para que se puedan leer y procesar
+            option = c.recv(1024).decode()
+            if option == 'insert':
+                inserting(c, address)
 
-        elif option == 'update':
-            updating(c)
+            elif option == 'update':
+                updating(c, address)
 
-        c.close()
-        print('[SOCKET] Closed connection: ' + str(address))
+            c.close()
+            logging.debug("[SOCKET] Closed connection: " + str(address))  
+            print('[SOCKET] Closed connection: ' + str(address))
+    except Exception as ex:  
+        logging.critical(str(ex))      
 
 def main():
+
+    nombreFecha = datetime.now().strftime('registry_%Y%m%d.log')
+    #Configuro el sistema de logging
+    logging.basicConfig(filename=nombreFecha, filemode="a", level=logging.DEBUG, format='%(levelname)s %(asctime)s: %(message)s')
+    logging.getLogger('werkzeug').disabled = True
+    logging.debug("Aplicación iniciada")
+    
+
     t1 = threading.Thread(target=socketRegistry, args = [])
     t2 = threading.Thread(target=apiRun, args = [])
     t1.start()
