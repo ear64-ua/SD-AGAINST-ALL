@@ -110,7 +110,7 @@ console.log('Client-side code running');
         element.appendChild(div_player);
     }
 
-  }, 3000);
+  }, 1000);
 })()
 
 

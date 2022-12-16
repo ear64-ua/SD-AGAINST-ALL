@@ -12,7 +12,7 @@ ip_engine=$(echo $engine| cut -d' ' -f 3)
 
 echo "Engine: $ip_engine"
 
-docker exec -it $base node api_engine.js $ip_engine
+docker exec -it $base node /usr/app/api_engine.js $ip_engine
 
 
 
