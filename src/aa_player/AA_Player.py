@@ -1,4 +1,5 @@
 from base64 import encode
+import base64
 import socket
 import sys
 import json
@@ -10,6 +11,12 @@ from json import dumps
 from json import loads
 from threading import Thread
 import requests
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes, padding, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 alias = ''
 password = ''
@@ -111,6 +118,56 @@ def insertarMovimiento(Broker):
             producer.close()
             return
 
+
+def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
+
+    with open("/secrets/private_key.pem", "rb") as key_file:
+        private_key = serialization.load_pem_private_key(
+            key_file.read(),
+            password=None,
+            backend=default_backend()
+        )
+
+    salt = private_key.decrypt(
+            encrypted_salt,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+    print(f'decrypted salt: {salt}')
+
+    password = private_key.decrypt(
+            encrypted_password,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+    print(f'decrypted password: {password}')
+
+     # Generate the AES key using PBKDF2 HMAC
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000
+    )
+    
+    aes_key = base64.urlsafe_b64encode(kdf.derive(password))
+        
+    # Create a Fernet object using the AES key
+    fernet = Fernet(aes_key)
+
+    # Decrypt the message using Fernet
+    decrypted_message = fernet.decrypt(encrypted_message)
+
+    print(f'decrypted message: {decrypted_message}')
+
+    return loads(decrypted_message.decode('utf-8'))
+
 def leerEstado(Broker):
 
     global jugadorVivo
@@ -119,14 +176,28 @@ def leerEstado(Broker):
     global ackRecibido
 
     consumer = KafkaConsumer(
-    'estadoJugador',
-     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='latest',
-     enable_auto_commit=True,
-     value_deserializer=lambda x: loads(x.decode('utf-8')))
+        'estadoJugador',
+        bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+        auto_offset_reset='latest',
+        enable_auto_commit=True
+    )
 
     for message in consumer:
-        message = message.value 
+        message = loads(message.value.decode('utf-8'))
+        
+        base64salt = base64.b64decode(message['salt'])
+        base64password = base64.b64decode(message['password'])
+
+        print(f'base 64 salt {base64salt}')
+        print(f'base 64 password {base64password}')
+
+        print(base64.b64decode(message['message']).decode('utf-8'))
+
+        message = desenryptMessage(
+                    base64.b64decode(message['message']).decode('utf-8'),
+                    base64salt,
+                    base64password)
+
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
                 if 'numMovimiento' in message:

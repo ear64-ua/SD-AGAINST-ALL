@@ -20,6 +20,8 @@ services:
     tty: true
     networks:
       my_net:
+    volumes:
+      - ./secrets/private_key.pem:/secrets/private_key.pem
 
   aa_npc:
     build: ./aa_npc
@@ -47,6 +49,9 @@ services:
     tty: true
     networks:
       my_net:
+    volumes:
+      - ./secrets/private_key.pem:/secrets/private_key.pem
+      - ./secrets/public_key.pem:/secrets/public_key.pem
 
   front:
     container_name: front
