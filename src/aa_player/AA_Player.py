@@ -1,5 +1,6 @@
 from base64 import encode
 import base64
+import os
 import socket
 import sys
 import json
@@ -98,7 +99,38 @@ def leerMapa(Broker):
         else:
             consumer.close()
             return
-     
+
+def getPublicKey():
+
+    with open("/secrets/public_key.pem", "rb") as key_file:
+      # Read the contents of the file into a variable
+      key_data = key_file.read()
+      # Do something with the key data, such as loading it as a public key
+      public_key = serialization.load_pem_public_key(
+        key_data, 
+        backend=default_backend()
+      )
+
+    return public_key
+
+def encryptMessage(message, salt, password):
+
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000
+    )
+
+    aes_key = base64.urlsafe_b64encode(kdf.derive(password))
+    # Create a Fernet object using the AES key
+    fernet = Fernet(aes_key)
+    
+    # Encypt message
+    message_bytes = bytes(message, 'utf-8')
+    encrypted_message = fernet.encrypt(message_bytes)
+
+    return encrypted_message
 
 def insertarMovimiento(Broker):
     global jugadorVivo
@@ -106,17 +138,53 @@ def insertarMovimiento(Broker):
     global partidaIniciada
     global ackRecibido
 
-    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-                         value_serializer=lambda x: 
-                         dumps(x).encode('utf-8'))
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'])
 
     while True:
-        data = {'alias': alias,
-                'codigoPartida' : codigoPartida,
-                'numMovimiento' : numMovimientos,
-                'move' : input()}       
+
+        public_key = getPublicKey()
+        #private_key = getPrivateKey()
+
+        salt = os.urandom(16)
+        password=b"password"
+
+        encrypted_salt = public_key.encrypt(
+            salt,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        encrypted_password = public_key.encrypt(
+            password,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        message = {
+            'alias': alias,
+            'codigoPartida' : codigoPartida,
+            'numMovimiento' : numMovimientos,
+            'move' : input()
+        }
+
+        # encrypt message
+        encrypted_message = encryptMessage(dumps(message),salt,password)
+
+        # define encrypted structure
+        data = {
+            'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+            'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+            'password' : base64.b64encode(encrypted_password).decode('utf-8')
+        }
+
         if(jugadorVivo and partidaIniciada):        
-            producer.send('player_move', value=data)
+            producer.send('player_move', value=dumps(data).encode('utf-8'))
             numMovimientos = numMovimientos + 1
             ackRecibido = False    
         sleep(1)

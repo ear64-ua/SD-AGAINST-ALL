@@ -576,6 +576,55 @@ def buscarJugador(array, alias):
 
     return False            
 
+def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
+
+    with open("/secrets/private_key.pem", "rb") as key_file:
+        private_key = serialization.load_pem_private_key(
+            key_file.read(),
+            password=None,
+            backend=default_backend()
+        )
+
+    salt = private_key.decrypt(
+            encrypted_salt,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+    #print(f'decrypted salt: {salt}')
+
+    password = private_key.decrypt(
+            encrypted_password,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+    #print(f'decrypted password: {password}')
+
+     # Generate the AES key using PBKDF2 HMAC
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000
+    )
+    
+    aes_key = base64.urlsafe_b64encode(kdf.derive(password))
+        
+    # Create a Fernet object using the AES key
+    fernet = Fernet(aes_key)
+
+    # Decrypt the message using Fernet
+    decrypted_message = fernet.decrypt(encrypted_message)
+
+    #print(f'decrypted message: {decrypted_message}')
+
+    return loads(decrypted_message.decode('utf-8'))
+
 def escucharMovimientos(Broker):
 
     global jugadoresVivos
@@ -584,12 +633,21 @@ def escucharMovimientos(Broker):
     'player_move',
      bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
      auto_offset_reset='latest',
-     enable_auto_commit=True,
-     value_deserializer=lambda x: loads(x.decode('utf-8')))
+     enable_auto_commit=True)
 
     for message in consumer:
         finTiempo = False
-        message = message.value
+        
+        message = loads(message.value.decode('utf-8'))
+        
+        base64salt = base64.b64decode(message['salt'])
+        base64password = base64.b64decode(message['password'])
+
+        message = desenryptMessage(
+            base64.b64decode(message['message']).decode('utf-8'),
+            base64salt,
+            base64password
+        )
         
         try:
             direccion = message['move']
@@ -846,7 +904,7 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
             'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
             'password' : base64.b64encode(encrypted_password).decode('utf-8')
         }
-        
+
     else:
         print('[PARTIDA] ERROR EN FUNCION ENVIARMENSAJE')
 
