@@ -1,8 +1,0 @@
-{
-    "direcciones": [
-        {
-            "Id" : "AA_Weather",
-            "port": "1700"
-        }
-    ]
-}

@@ -975,7 +975,7 @@ def main():
     arrayJugadores.clear
     arrayNPCs.clear
 
-    if len(sys.argv[1:]) < 4:
+    if len(sys.argv[1:]) < 3:
         print(ERR_ARGS)
         return -1
     args = sys.argv[1:]
@@ -983,12 +983,9 @@ def main():
     AA_Engine = Modulo('AA_Engine')
     AA_Engine.setIp(args[0])
 
-    AA_Weather = Modulo('AA_Weather')
-    AA_Weather.setIp(args[1])
-
     try:
-        maxJugadores = int(args[2])
-        tiempoPartida = int(args[3])
+        maxJugadores = int(args[1])
+        tiempoPartida = int(args[2])
     except:
         print(ERR_ARGS)
         return -1;

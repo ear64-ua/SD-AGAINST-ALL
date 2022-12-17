@@ -41,13 +41,6 @@ services:
         aliases: 
             - aa_registry
 
-  aa_weather:
-    build: ./aa_weather
-    stdin_open: true
-    tty: true
-    networks:
-      my_net:
-
   aa_engine:
     build: ./aa_engine
     stdin_open: true
