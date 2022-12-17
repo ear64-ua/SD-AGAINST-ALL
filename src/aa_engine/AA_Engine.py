@@ -727,8 +727,6 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
     public_key = getPublicKey()
     #private_key = getPrivateKey()
 
-    password = ''
-
     salt = os.urandom(16)
     password=b"password"
 
@@ -755,20 +753,20 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
 
         # define message
         message = { 
-                    'alias' : 'broadcast', 
-                    'estadoPartida' : valorMensaje,
-                    'codigoPartida' : codigoPartida
-                }
+            'alias' : 'broadcast', 
+            'estadoPartida' : valorMensaje,
+            'codigoPartida' : codigoPartida
+        }
         
         # encrypt message
         encrypted_message = encryptMessage(dumps(message),salt,password)
 
         # define encrypted structure
         data = {
-                    'message' : base64.b64encode(encrypted_message).decode('utf-8'),
-                    'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
-                    'password' : base64.b64encode(encrypted_password).decode('utf-8')
-                }
+            'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+            'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+            'password' : base64.b64encode(encrypted_password).decode('utf-8')
+        }
 
     elif tipoMensaje == 'estadoJugador':
         cola = 'estadoJugador'
@@ -781,10 +779,10 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
 
         # define encrypted structure
         data = {    
-                    'message' : base64.b64encode(encrypted_message).decode('utf-8'),
-                    'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
-                    'password' : base64.b64encode(encrypted_password).decode('utf-8')
-                }
+            'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+            'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+            'password' : base64.b64encode(encrypted_password).decode('utf-8')
+        }
         
     elif tipoMensaje == 'ackMovimiento':
         cola = 'estadoJugador'
@@ -797,23 +795,58 @@ def enviarMensaje(Broker, tipoMensaje, valorMensaje):
         
         # define encrypted structure
         data = {    
-                    'message' : base64.b64encode(encrypted_message).decode('utf-8'),
-                    'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
-                    'password' : base64.b64encode(encrypted_password).decode('utf-8')
+            'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+            'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+            'password' : base64.b64encode(encrypted_password).decode('utf-8')
         }
 
     elif tipoMensaje == 'mapa':
         cola = 'mapa'
         if (jugadoresVivos > 1):
-            data = {'mapa' : str(mapa),
-                    'codigoPartida' : codigoPartida}
+            message = {
+                'mapa' : str(mapa),
+                'codigoPartida' : codigoPartida
+            }
+
+            # encrypt message
+            encrypted_message = encryptMessage(dumps(message),salt,password)
+
+            data = {
+                'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+                'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+                'password' : base64.b64encode(encrypted_password).decode('utf-8')
+            }
         else:
-            data = {'finPartida': True,
-                    'codigoPartida' : codigoPartida}
+            message = {
+                'finPartida': True,
+                'codigoPartida' : codigoPartida
+            }
+
+            # encrypt message
+            encrypted_message = encryptMessage(dumps(message),salt,password)
+
+            data = {
+                'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+                'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+                'password' : base64.b64encode(encrypted_password).decode('utf-8')
+            }
+
     elif tipoMensaje == 'player_move':
         cola = 'player_move'
-        data = {'finTiempo' : True,
-                'codigoPartida' : codigoPartida}
+        message = {
+            'finTiempo' : True,
+            'codigoPartida' : codigoPartida
+        }
+
+        # encrypt message
+        encrypted_message = encryptMessage(dumps(message),salt,password)
+
+        data = {
+            'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+            'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+            'password' : base64.b64encode(encrypted_password).decode('utf-8')
+        }
+        
     else:
         print('[PARTIDA] ERROR EN FUNCION ENVIARMENSAJE')
 

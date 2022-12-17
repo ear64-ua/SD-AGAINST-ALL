@@ -63,31 +63,41 @@ def leerMapa(Broker):
     global jugadorVivo
 
     consumer = KafkaConsumer(
-    'mapa',
-     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='latest',
-     enable_auto_commit=True,
-     value_deserializer=lambda x: loads(x.decode('utf-8')))
+        'mapa',
+        bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+        auto_offset_reset='latest',
+        enable_auto_commit=True
+    )
 
     for message in consumer:
-            if(jugadorVivo):
-                message = message.value
-                if(message['codigoPartida']) == codigoPartida:
-                    if('mapa' in message):
-                        mapa = message['mapa']
-                        print(mapa)
-                        print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
-                    elif ('finPartida' in message):
-                        if (message['finPartida']):
-                            consumer.close()
-                            return
-                    else:
-                        print('MENSAJE ERRONEO')
+        if(jugadorVivo):
+            message = loads(message.value.decode('utf-8'))
+        
+            base64salt = base64.b64decode(message['salt'])
+            base64password = base64.b64decode(message['password'])
+
+            message = desenryptMessage(
+                base64.b64decode(message['message']).decode('utf-8'),
+                base64salt,
+                base64password
+            )
+
+            if(message['codigoPartida']) == codigoPartida:
+                if('mapa' in message):
+                    mapa = message['mapa']
+                    print(mapa)
+                    print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
+                elif ('finPartida' in message):
+                    if (message['finPartida']):
                         consumer.close()
-                        return  
-            else:
-                consumer.close()
-                return
+                        return
+                else:
+                    print('MENSAJE ERRONEO')
+                    consumer.close()
+                    return  
+        else:
+            consumer.close()
+            return
      
 
 def insertarMovimiento(Broker):
@@ -136,7 +146,7 @@ def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
                 label=None
             )
         )
-    print(f'decrypted salt: {salt}')
+    #print(f'decrypted salt: {salt}')
 
     password = private_key.decrypt(
             encrypted_password,
@@ -146,7 +156,7 @@ def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
                 label=None
             )
         )
-    print(f'decrypted password: {password}')
+    #print(f'decrypted password: {password}')
 
      # Generate the AES key using PBKDF2 HMAC
     kdf = PBKDF2HMAC(
@@ -164,7 +174,7 @@ def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
     # Decrypt the message using Fernet
     decrypted_message = fernet.decrypt(encrypted_message)
 
-    print(f'decrypted message: {decrypted_message}')
+    #print(f'decrypted message: {decrypted_message}')
 
     return loads(decrypted_message.decode('utf-8'))
 
@@ -188,15 +198,16 @@ def leerEstado(Broker):
         base64salt = base64.b64decode(message['salt'])
         base64password = base64.b64decode(message['password'])
 
-        print(f'base 64 salt {base64salt}')
-        print(f'base 64 password {base64password}')
+        #print(f'base 64 salt {base64salt}')
+        #print(f'base 64 password {base64password}')
 
-        print(base64.b64decode(message['message']).decode('utf-8'))
+        #print(base64.b64decode(message['message']).decode('utf-8'))
 
         message = desenryptMessage(
-                    base64.b64decode(message['message']).decode('utf-8'),
-                    base64salt,
-                    base64password)
+            base64.b64decode(message['message']).decode('utf-8'),
+            base64salt,
+            base64password
+        )
 
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
