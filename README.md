@@ -50,25 +50,25 @@ Y lo desplegaríamos ejecutando desde el directorio ``/src`` lo siguiente:
 ## Correr servicios
 
 #### AA_Engine
-``./run_engine``
+``./run_engine.sh``
 
 #### AA_Weather
-``./run_weather``
+``./run_weather.sh``
 
 #### AA_Registry
-``./run_registry``
+``./run_registry.sh``
 
 #### AA_Player
-``./run_player``
+``./run_player.sh``
 
 #### AA_NPC
-``./run_npc``
+``./run_npc.sh``
 
 #### API_Engine
-``./run_api_engine``
+``./run_api_engine.sh``
 
 #### Front
-``./run_front``
+``./run_front.sh``
 
 ## Parar servicios
 
