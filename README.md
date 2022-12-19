@@ -155,7 +155,7 @@ En el despliegue se ha hecho uso de los contenedores de Docker. Nos hemos encotr
 
 Y lo desplegaríamos ejecutando desde el directorio `/src` lo siguiente: `./run.sh`
 
-<img src=files/images/docker.jpeg width=600px height=400px>
+<img src=files/images/docker.jpeg width=400px height=400px>
 
 
 ## Correr servicios
