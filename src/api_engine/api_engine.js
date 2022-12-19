@@ -45,6 +45,8 @@ app.get('/map', (req, res) => {
       dbo.collection("partida").find(query).toArray(function(err, result) {
         if (err) throw err;
 
+        console.log('[0] ',result[0])
+
         c1 = JSON.parse(result[0]['c1']);
         c2 = JSON.parse(result[0]['c2']);
         c3 = JSON.parse(result[0]['c3']);

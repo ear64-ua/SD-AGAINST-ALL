@@ -27,7 +27,7 @@ arrayMovimientos = ['N','S','E','W','NW','NE','SE','SW']
 
 def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
 
-    with open("/secrets/private_key.pem", "rb") as key_file:
+    with open("/secrets/engine/private_key.pem", "rb") as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
             password=None,
@@ -117,7 +117,7 @@ def leerMapa(Broker):
 
 def getPublicKey():
 
-    with open("/secrets/public_key.pem", "rb") as key_file:
+    with open("/secrets/engine/public_key.pem", "rb") as key_file:
       # Read the contents of the file into a variable
       key_data = key_file.read()
       # Do something with the key data, such as loading it as a public key
