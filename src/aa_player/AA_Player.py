@@ -10,6 +10,7 @@ from json import dumps
 from json import loads
 from threading import Thread
 import requests
+import ssl
 
 alias = ''
 password = ''
@@ -18,6 +19,8 @@ jugadorVivo = True
 partidaIniciada = False
 numMovimientos = 1
 ackRecibido = True
+registry_pem = "secrets/registry.pem"
+engine_pem = "secrets/engine.pem"
 
 class Modulo:
     
@@ -200,36 +203,43 @@ def conectarPartida(AA_Engine):
     conectado = False
     engine_socket = None
     engine_socket = socket.socket()
-    # usamos el nombre de host y lo pasamos a IP para que se conecte al socket
-    engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
+    try:
+        ssl_engine_socket = ssl.wrap_socket(engine_socket,ca_certs=engine_pem)
+        # usamos el nombre de host y lo pasamos a IP para que se conecte al socket
+        ssl_engine_socket.connect((AA_Engine.getIp(),AA_Engine.getPort()))
 
+        msg = ssl_engine_socket.recv(1024).decode() 
 
-    msg = engine_socket.recv(1024).decode() 
-    print(msg)
+        print(msg)
 
-    global alias
-    alias = input('alias: ')
-    password = input('password: ')
+        global alias
+        alias = input('alias: ')
+        password = input('password: ')
 
-    login = {   'alias' : alias,
-                'password' : password
-            }
+        login = {   'alias' : alias,
+                    'password' : password
+                }
 
-    login = json.dumps(login)
+        login = json.dumps(login)
 
-    engine_socket.send(login.encode())
+        ssl_engine_socket.send(login.encode())
 
-    data = engine_socket.recv(1024).decode()
-    data = json.loads(data)
+        data = engine_socket.recv(1024).decode()
+        data = json.loads(data)
 
-    print(data['msg'])
-    print()
+        print(data['msg'])
+        print()
 
-    if data['verified']:
-        codigoPartida = data['codigoPartida']    
-        conectado = True
+        if data['verified']:
+            codigoPartida = data['codigoPartida']    
+            conectado = True
 
-    engine_socket.close()
+        ssl_engine_socket.close()
+        engine_socket.close()    
+
+    except Exception as e:
+        print(e)
+
     return conectado
 
 def insertRegistrySocket(AA_Registry):
@@ -255,27 +265,34 @@ def insertRegistrySocket(AA_Registry):
     
     try:
         conn = socket.socket()
+        ssl_conn = ssl.wrap_socket(conn, ca_certs=registry_pem)
     except socket.error as err:
         print('Socket error because of %s' %(err))
+    except Exception as e:
+        print(e)    
 
     try:
-        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+        ssl_conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
 
         # notificamos al servidor que se quiere insertar
-        conn.send('insert'.encode())
-        msg = conn.recv(1024).decode()
+        ssl_conn.send('insert'.encode())
+        msg = ssl_conn.recv(1024).decode()
         print(msg)
 
         # mandamos los datos al servidor
-        conn.send(datos.encode())
-        msg = conn.recv(1024).decode()
+        ssl_conn.send(datos.encode())
+        msg = ssl_conn.recv(1024).decode()
         print(msg)
         print()
 
     except socket.gaierror:
         print('There an error resolving the host')
         sys.exit() 
+    except Exception as e:
+        print(e)
+        sys.exit()    
                 
+    ssl_conn.close()            
     conn.close()
 
 # Conecta con la base de datos y devuelve si se ha insertado o no
@@ -299,29 +316,36 @@ def updateRegistrySocket(AA_Registry):
 
     try:
         conn = socket.socket()
+        ssl_conn = ssl.wrap_socket(conn, ca_certs=registry_pem)
     except socket.error as err:
         print('Socket error because of %s' %(err))
+    except Exception as e:
+        print(e)  
 
     try:
-        conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
+        ssl_conn.connect((AA_Registry.getIp(), AA_Registry.getPort()))
 
         # send action to server
-        conn.send('update'.encode())
-        msg = conn.recv(1024).decode()
+        ssl_conn.send('update'.encode())
+        msg = ssl_conn.recv(1024).decode()
         print(msg)
 
-        conn.send(oldData.encode())
-        msg = conn.recv(1024).decode() # confirmación de datos antiguos
+        ssl_conn.send(oldData.encode())
+        msg = ssl_conn.recv(1024).decode() # confirmación de datos antiguos
 
-        conn.send(newData.encode())
-        msg = conn.recv(1024).decode() # confirmación de insert
+        ssl_conn.send(newData.encode())
+        msg = ssl_conn.recv(1024).decode() # confirmación de insert
         print(msg)
         print()
        
     except socket.gaierror:
         print('There an error resolving the host')
         sys.exit() 
+    except Exception as e:
+        print(e)
+        sys.exit()    
                 
+    ssl_conn.close()                
     conn.close()
 
 def insertRegistryApi(registry):
