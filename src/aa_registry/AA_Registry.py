@@ -13,11 +13,16 @@ import logging
 from hashlib import pbkdf2_hmac
 import random
 import string
+import ssl
 
 app = Flask(__name__)
 
+
 BD_CONNECTION = "[BD] Connected to MongoDB successfully!!!"
 BD_ERR = "[BD] Could not connect to MongoDB"
+
+registry_key = 'secrets/registry.key'
+registry_cert = 'secrets/registry.pem'
 
 # Aplica la función hash al password indicado, junto con la sal
 def hashPassword(plaintext:str, salt:str):
@@ -263,14 +268,17 @@ def socketRegistry():
             logging.debug("[SOCKET] Connection from: " + str(address))  
             print("[SOCKET] Connection from: " + str(address))
 
-            # decodifica los datos enviados para que se puedan leer y procesar
-            option = c.recv(1024).decode()
+            ssl_socket = ssl.wrap_socket(c, server_side=True, certfile=registry_cert, keyfile=registry_key, ssl_version=ssl.PROTOCOL_TLSv1_2)
+                    
+                    # decodifica los datos enviados para que se puedan leer y procesar
+            option = ssl_socket.recv(1024).decode()
             if option == 'insert':
-                inserting(c, address)
+                inserting(ssl_socket, address)
 
             elif option == 'update':
-                updating(c, address)
+                updating(ssl_socket, address)
 
+            ssl_socket.close()
             c.close()
             logging.debug("[SOCKET] Closed connection: " + str(address))  
             print('[SOCKET] Closed connection: ' + str(address))

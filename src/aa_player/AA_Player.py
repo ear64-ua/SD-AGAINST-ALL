@@ -80,7 +80,7 @@ def leerMapa(Broker):
             base64salt = base64.b64decode(message['salt'])
             base64password = base64.b64decode(message['password'])
 
-            message = desenryptMessage(
+            message = desencryptMessage(
                 base64.b64decode(message['message']).decode('utf-8'),
                 base64salt,
                 base64password
@@ -200,7 +200,7 @@ def insertarMovimiento(Broker):
             return
 
 
-def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
+def desencryptMessage(encrypted_message,encrypted_salt,encrypted_password):
 
     with open("/secrets/private_key.pem", "rb") as key_file:
         private_key = serialization.load_pem_private_key(
@@ -274,7 +274,7 @@ def leerEstado(Broker):
 
         #print(base64.b64decode(message['message']).decode('utf-8'))
 
-        message = desenryptMessage(
+        message = desencryptMessage(
             base64.b64decode(message['message']).decode('utf-8'),
             base64salt,
             base64password
