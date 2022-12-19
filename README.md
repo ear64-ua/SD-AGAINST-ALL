@@ -83,7 +83,7 @@ El flujo de datos consistirá entonces en el envío de:
 
 Los las claves públicas y privada estarán almacenadas en un directorio ( secrets ), para mantenerlo ajeno al código y poder acceder a estos datos a través de cualquier aplicación autorizada.
 
-<img src=files/images/kafka_encryption.jpg width=400px height=400px>
+<img src=files/images/kafka_encryption.jpeg width=400px height=400px>
 
 # API Engine
 
@@ -131,7 +131,7 @@ Se comprueba en el front, especificamente en client.js que el API Engine esté c
 
 El front luce de la siguiente manera:
 
-<img src=files/images/front.jpg width=400px height=400px>
+<img src=files/images/front.jpeg width=400px height=400px>
 
 # Problemas encontrados y soluciones encontradas
 
@@ -155,7 +155,7 @@ En el despliegue se ha hecho uso de los contenedores de Docker. Nos hemos encotr
 
 Y lo desplegaríamos ejecutando desde el directorio `/src` lo siguiente: `./run.sh`
 
-<img src=files/images/docker.jpg width=400px height=400px>
+<img src=files/images/docker.jpeg width=400px height=400px>
 
 
 ## Correr servicios
