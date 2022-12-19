@@ -47,7 +47,7 @@ console.log('Client-side code running');
             // iteramos sobre las 10 columnas
             for (let j = 0; j < 10; j++){
                 if (json[i][0]['casillas'][k][j] == ".")
-                    city_content = city_content + "  .  ";
+                    city_content = city_content + "   .   ";
                 else if (json[i][0]['casillas'][k][j] == "M")
                     city_content = city_content + " " + "💣" + " ";
                 else if (json[i][0]['casillas'][k][j] == "A"){

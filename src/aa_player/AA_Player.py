@@ -1,4 +1,6 @@
 from base64 import encode
+import base64
+import os
 import socket
 import sys
 import json
@@ -10,6 +12,12 @@ from json import dumps
 from json import loads
 from threading import Thread
 import requests
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes, padding, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import ssl
 
 alias = ''
@@ -59,32 +67,73 @@ def leerMapa(Broker):
     global jugadorVivo
 
     consumer = KafkaConsumer(
-    'mapa',
-     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='latest',
-     enable_auto_commit=True,
-     value_deserializer=lambda x: loads(x.decode('utf-8')))
+        'mapa',
+        bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+        auto_offset_reset='latest',
+        enable_auto_commit=True
+    )
 
     for message in consumer:
-            if(jugadorVivo):
-                message = message.value
-                if(message['codigoPartida']) == codigoPartida:
-                    if('mapa' in message):
-                        mapa = message['mapa']
-                        print(mapa)
-                        print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
-                    elif ('finPartida' in message):
-                        if (message['finPartida']):
-                            consumer.close()
-                            return
-                    else:
-                        print('MENSAJE ERRONEO')
+        if(jugadorVivo):
+            message = loads(message.value.decode('utf-8'))
+        
+            base64salt = base64.b64decode(message['salt'])
+            base64password = base64.b64decode(message['password'])
+
+            message = desenryptMessage(
+                base64.b64decode(message['message']).decode('utf-8'),
+                base64salt,
+                base64password
+            )
+
+            if(message['codigoPartida']) == codigoPartida:
+                if('mapa' in message):
+                    mapa = message['mapa']
+                    print(mapa)
+                    print('Elige tu movimiento (N, S, E, W, NE, NW, SE, SW): ')
+                elif ('finPartida' in message):
+                    if (message['finPartida']):
                         consumer.close()
-                        return  
-            else:
-                consumer.close()
-                return
-     
+                        return
+                else:
+                    print('MENSAJE ERRONEO')
+                    consumer.close()
+                    return  
+        else:
+            consumer.close()
+            return
+
+def getPublicKey():
+
+    with open("/secrets/public_key.pem", "rb") as key_file:
+      # Read the contents of the file into a variable
+      key_data = key_file.read()
+      # Do something with the key data, such as loading it as a public key
+      public_key = serialization.load_pem_public_key(
+        key_data, 
+        backend=default_backend()
+      )
+
+    return public_key
+
+def encryptMessage(message, salt, password):
+
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000
+    )
+
+    aes_key = base64.urlsafe_b64encode(kdf.derive(password))
+    # Create a Fernet object using the AES key
+    fernet = Fernet(aes_key)
+    
+    # Encypt message
+    message_bytes = bytes(message, 'utf-8')
+    encrypted_message = fernet.encrypt(message_bytes)
+
+    return encrypted_message
 
 def insertarMovimiento(Broker):
     global jugadorVivo
@@ -92,17 +141,53 @@ def insertarMovimiento(Broker):
     global partidaIniciada
     global ackRecibido
 
-    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-                         value_serializer=lambda x: 
-                         dumps(x).encode('utf-8'))
+    producer = KafkaProducer(bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'])
 
     while True:
-        data = {'alias': alias,
-                'codigoPartida' : codigoPartida,
-                'numMovimiento' : numMovimientos,
-                'move' : input()}       
+
+        public_key = getPublicKey()
+        #private_key = getPrivateKey()
+
+        salt = os.urandom(16)
+        password=b"password"
+
+        encrypted_salt = public_key.encrypt(
+            salt,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        encrypted_password = public_key.encrypt(
+            password,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        message = {
+            'alias': alias,
+            'codigoPartida' : codigoPartida,
+            'numMovimiento' : numMovimientos,
+            'move' : input()
+        }
+
+        # encrypt message
+        encrypted_message = encryptMessage(dumps(message),salt,password)
+
+        # define encrypted structure
+        data = {
+            'message' : base64.b64encode(encrypted_message).decode('utf-8'),
+            'salt' : base64.b64encode(encrypted_salt).decode('utf-8'),
+            'password' : base64.b64encode(encrypted_password).decode('utf-8')
+        }
+
         if(jugadorVivo and partidaIniciada):        
-            producer.send('player_move', value=data)
+            producer.send('player_move', value=dumps(data).encode('utf-8'))
             numMovimientos = numMovimientos + 1
             ackRecibido = False    
         sleep(1)
@@ -114,6 +199,56 @@ def insertarMovimiento(Broker):
             producer.close()
             return
 
+
+def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
+
+    with open("/secrets/private_key.pem", "rb") as key_file:
+        private_key = serialization.load_pem_private_key(
+            key_file.read(),
+            password=None,
+            backend=default_backend()
+        )
+
+    salt = private_key.decrypt(
+            encrypted_salt,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+    #print(f'decrypted salt: {salt}')
+
+    password = private_key.decrypt(
+            encrypted_password,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+    #print(f'decrypted password: {password}')
+
+     # Generate the AES key using PBKDF2 HMAC
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000
+    )
+    
+    aes_key = base64.urlsafe_b64encode(kdf.derive(password))
+        
+    # Create a Fernet object using the AES key
+    fernet = Fernet(aes_key)
+
+    # Decrypt the message using Fernet
+    decrypted_message = fernet.decrypt(encrypted_message)
+
+    #print(f'decrypted message: {decrypted_message}')
+
+    return loads(decrypted_message.decode('utf-8'))
+
 def leerEstado(Broker):
 
     global jugadorVivo
@@ -122,14 +257,29 @@ def leerEstado(Broker):
     global ackRecibido
 
     consumer = KafkaConsumer(
-    'estadoJugador',
-     bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
-     auto_offset_reset='latest',
-     enable_auto_commit=True,
-     value_deserializer=lambda x: loads(x.decode('utf-8')))
+        'estadoJugador',
+        bootstrap_servers=[f'{Broker.getIp()}:{Broker.getPort()}'],
+        auto_offset_reset='latest',
+        enable_auto_commit=True
+    )
 
     for message in consumer:
-        message = message.value 
+        message = loads(message.value.decode('utf-8'))
+        
+        base64salt = base64.b64decode(message['salt'])
+        base64password = base64.b64decode(message['password'])
+
+        #print(f'base 64 salt {base64salt}')
+        #print(f'base 64 password {base64password}')
+
+        #print(base64.b64decode(message['message']).decode('utf-8'))
+
+        message = desenryptMessage(
+            base64.b64decode(message['message']).decode('utf-8'),
+            base64salt,
+            base64password
+        )
+
         if(message['codigoPartida']) == codigoPartida:
             if(message['alias'] == alias and partidaIniciada):
                 if 'numMovimiento' in message:
