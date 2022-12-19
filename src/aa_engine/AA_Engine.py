@@ -576,9 +576,9 @@ def buscarJugador(array, alias):
 
     return False            
 
-def desenryptMessage(encrypted_message,encrypted_salt,encrypted_password):
+def desencryptMessage(encrypted_message,encrypted_salt,encrypted_password):
 
-    with open("/secrets/private_key.pem", "rb") as key_file:
+    with open("/secrets/engine/private_key.pem", "rb") as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
             password=None,
@@ -643,7 +643,7 @@ def escucharMovimientos(Broker):
         base64salt = base64.b64decode(message['salt'])
         base64password = base64.b64decode(message['password'])
 
-        message = desenryptMessage(
+        message = desencryptMessage(
             base64.b64decode(message['message']).decode('utf-8'),
             base64salt,
             base64password
@@ -734,7 +734,7 @@ def generarAckMovimiento(jugador, numMovimiento):
 
 def getPrivateKey():
 
-    with open("/secrets/private_key.pem", "rb") as key_file:
+    with open("/secrets/engine/private_key.pem", "rb") as key_file:
       private_key = serialization.load_pem_private_key(
         key_file.read(),
         password=None,
@@ -745,7 +745,7 @@ def getPrivateKey():
 
 def getPublicKey():
 
-    with open("/secrets/public_key.pem", "rb") as key_file:
+    with open("/secrets/engine/public_key.pem", "rb") as key_file:
       # Read the contents of the file into a variable
       key_data = key_file.read()
       # Do something with the key data, such as loading it as a public key
