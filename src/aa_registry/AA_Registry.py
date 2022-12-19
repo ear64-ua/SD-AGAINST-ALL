@@ -240,7 +240,7 @@ def actualizar():
 def apiRun():
     try:
         logging.debug("Arrancando servidor registro API")
-        app.run(debug=False, port=8000, host="0.0.0.0")
+        app.run(debug=False, port=8000, host="0.0.0.0", ssl_context=(registry_cert,registry_key))
         logging.debug("Servidor registro API arrancado correctamente")
     except Exception as ex:
         logging.critical(str(ex))

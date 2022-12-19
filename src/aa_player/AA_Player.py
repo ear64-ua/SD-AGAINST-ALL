@@ -19,6 +19,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import ssl
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 alias = ''
 password = ''
@@ -521,9 +524,10 @@ def insertRegistryApi(registry):
 
     ip = registry.getIp()
 
-    api_request = 'http://' + ip + ':8000' + '/registrar?data=' + datos
+    api_request = 'https://' + ip + ':8000' + '/registrar?data=' + datos
 
-    response = requests.post(api_request)
+    requests.packages.urllib3.disable_warnings()
+    response = requests.post(api_request, verify=False)
     data = response.text
     print(data)
 
@@ -544,9 +548,10 @@ def updateRegistryApi(registry):
 
     ip = registry.getIp()
 
-    api_request = 'http://' + ip + ':8000' + '/actualizar?oldData=' + oldData + '&newData=' + newData
+    api_request = 'https://' + ip + ':8000' + '/actualizar?oldData=' + oldData + '&newData=' + newData
 
-    response = requests.post(api_request)
+    requests.packages.urllib3.disable_warnings()
+    response = requests.post(api_request, verify=False)
     data = response.text
     print(data)
 
