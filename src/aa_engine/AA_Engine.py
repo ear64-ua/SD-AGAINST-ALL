@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives import hashes, padding, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import ssl
 
 VACIO = '.'
 TAM_CIUDAD = 10
@@ -45,6 +46,9 @@ ERR_ARGS = '[ARGS] Uso incorrecto de argumentos. Use IP_engine IP_weather maxJug
 ERR_MATCH = "[PARTIDA] ERROR. LA PARTIDA NO PUEDE COMENZAR"
 
 colors = [(85, 72, 98),(124, 180, 184),(78, 108, 80),(158, 118, 118)]
+
+engine_key = "secrets/key.pem"
+engine_pem = "secrets/cert.pem"
 
 #lista de jugadores que van a tomar parte en la partida
 arrayJugadores = []
@@ -976,10 +980,12 @@ def conexion_player(AA_Engine):
 
     while numJugadores < maxJugadores:        
         if (threading.active_count() - 1 < maxJugadores - numJugadores):
-            conn, addr = engine_socket.accept()  
-            thread = threading.Thread(target=handle_player, args = (conn,addr))
+            conn, addr = engine_socket.accept()
+            ssl_conn = ssl.wrap_socket(conn, server_side=True, certfile=engine_pem, keyfile=engine_key, ssl_version=ssl.PROTOCOL_TLSv1_2)  
+            thread = threading.Thread(target=handle_player, args = (ssl_conn,addr))
             thread.start()
 
+    ssl_conn.close()
     engine_socket.close()    
     print('[SOCKET] Closed')
     return True

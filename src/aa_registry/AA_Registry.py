@@ -270,7 +270,7 @@ def socketRegistry():
 
             ssl_socket = ssl.wrap_socket(c, server_side=True, certfile=registry_cert, keyfile=registry_key, ssl_version=ssl.PROTOCOL_TLSv1_2)
                     
-                    # decodifica los datos enviados para que se puedan leer y procesar
+            # decodifica los datos enviados para que se puedan leer y procesar
             option = ssl_socket.recv(1024).decode()
             if option == 'insert':
                 inserting(ssl_socket, address)

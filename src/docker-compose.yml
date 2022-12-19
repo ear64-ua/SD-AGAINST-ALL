@@ -21,8 +21,7 @@ services:
     networks:
       my_net:
     volumes:
-      - ./secrets/private_key.pem:/secrets/engine/private_key.pem
-      - ./secrets/public_key.pem:/secrets/engine/public_key.pem
+      - ./secrets/engine/:/secrets/engine/
 
   aa_npc:
     build: ./aa_npc
@@ -31,8 +30,7 @@ services:
     networks:
       my_net:
     volumes:
-      - ./secrets/private_key.pem:/secrets/engine/private_key.pem
-      - ./secrets/public_key.pem:/secrets/engine/public_key.pem
+      - ./secrets/engine/:/secrets/engine/
 
   aa_registry:
     container_name: aa_registry
@@ -54,8 +52,7 @@ services:
     networks:
       my_net:
     volumes:
-      - ./secrets/private_key.pem:/secrets/engine/private_key.pem
-      - ./secrets/public_key.pem:/secrets/engine/public_key.pem
+      - ./secrets/engine/:/secrets/engine/
 
   front:
     container_name: front

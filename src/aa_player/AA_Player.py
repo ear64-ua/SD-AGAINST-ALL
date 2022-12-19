@@ -28,7 +28,7 @@ partidaIniciada = False
 numMovimientos = 1
 ackRecibido = True
 registry_pem = "secrets/registry.pem"
-engine_pem = "secrets/engine.pem"
+engine_pem = "secrets/cert.pem"
 
 class Modulo:
     
@@ -105,7 +105,7 @@ def leerMapa(Broker):
 
 def getPublicKey():
 
-    with open("/secrets/public_key.pem", "rb") as key_file:
+    with open("/secrets/engine/public_key.pem", "rb") as key_file:
       # Read the contents of the file into a variable
       key_data = key_file.read()
       # Do something with the key data, such as loading it as a public key
@@ -202,7 +202,7 @@ def insertarMovimiento(Broker):
 
 def desencryptMessage(encrypted_message,encrypted_salt,encrypted_password):
 
-    with open("/secrets/private_key.pem", "rb") as key_file:
+    with open("/secrets/engine/private_key.pem", "rb") as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
             password=None,
@@ -374,7 +374,7 @@ def conectarPartida(AA_Engine):
 
         ssl_engine_socket.send(login.encode())
 
-        data = engine_socket.recv(1024).decode()
+        data = ssl_engine_socket.recv(1024).decode()
         data = json.loads(data)
 
         print(data['msg'])
